@@ -19,8 +19,8 @@
  * Human-readable SHA
  */
 static void sha_to_string(const unsigned char* SHA,
-                          char* sha_string)
-{
+                          char* sha_string) {
+
     if (SHA == NULL) return;
 
     for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
@@ -67,3 +67,44 @@ ORIGINAL: %" PRIu32 " x %" PRIu32 "\n",
     printf("*****************************************\n");
 }
 
+int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image) {
+    FILE* ptr = fopen(fileName, opningMode);
+    M_REQUIRE_NON_NULL(ptr);
+    image -> file = ptr;
+
+    struct imgfs_header header;
+    if (fread(&header, sizeof(struct imgfs_header), 1, image -> file) != 1) {
+        fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
+        fclose(image -> file); // file closing in case of an error
+        return ERR_INVALID_ARGUMENT;
+    } else {
+        image -> header = header;
+    }
+
+    struct imgfs_metadata metadata[header.max_files];
+    if (fread(metadata, sizeof(struct imgfs_metadata), header.max_files , image -> file) != 1) {//todo check with assistants if lseek work perfectly in this case
+        fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
+        fclose(image -> file); // file closing in case of an error
+        return ERR_INVALID_ARGUMENT;
+    } else {
+        image -> metadata = calloc(header.max_files, sizeof(struct imgfs_metadata));
+        M_REQUIRE_NON_NULL(image -> metadata);
+        memcpy(image -> metadata, metadata, header.max_files * sizeof(struct imgfs_metadata));//copying metadata from the temp gotten from the file to the image
+    }
+
+
+    struct imgfs_file * ptr = calloc(sizeof(struct imgfs_file), 1);
+    M_REQUIRE_NON_NULL(ptr);
+    image = ptr;
+
+
+    return ERR_NONE;
+}
+
+int do_close(struct imgfs_file * image) {
+    M_REQUIRE_NON_NULL(image);
+    fclose(image -> file);
+    free(image -> metadata);
+    free(image);
+    return ERR_NONE;
+}

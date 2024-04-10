@@ -69,7 +69,7 @@ struct img_metadata { // sizeof must be 216
 struct imgfs_file {
     FILE* file;
     struct imgfs_header header;
-    struct img_metadata metadata;
+    struct img_metadata* metadata;//todo should be dynamic array
 };
 
 
