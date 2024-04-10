@@ -68,6 +68,11 @@ ORIGINAL: %" PRIu32 " x %" PRIu32 "\n",
 }
 
 int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image) {
+    struct imgfs_file * ptr = calloc(sizeof(struct imgfs_file), 1);
+    M_REQUIRE_NON_NULL(ptr);
+    image = ptr;
+
+
     FILE* ptr = fopen(fileName, opningMode);
     M_REQUIRE_NON_NULL(ptr);
     image -> file = ptr;
@@ -91,12 +96,6 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
         M_REQUIRE_NON_NULL(image -> metadata);
         memcpy(image -> metadata, metadata, header.max_files * sizeof(struct imgfs_metadata));//copying metadata from the temp gotten from the file to the image
     }
-
-
-    struct imgfs_file * ptr = calloc(sizeof(struct imgfs_file), 1);
-    M_REQUIRE_NON_NULL(ptr);
-    image = ptr;
-
 
     return ERR_NONE;
 }
