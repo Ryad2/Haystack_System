@@ -39,14 +39,28 @@ int help(int useless _unused, char** useless_too _unused)
 /**********************************************************************
  * Opens imgFS file and calls do_list().
  ********************************************************************** */
-int do_list_cmd(int argc, char** argv)
-{
-    /* **********************************************************************
-     * TODO WEEK 07: WRITE YOUR CODE HERE.
-     * **********************************************************************
-     */
+int do_list_cmd(int argc, char** argv) { //todo Check if the function implementation is correct
 
-    return ERR_NONE;
+    if (argc != 2) {
+        printf("Usage: %s <imgfs_file>\n", argv[0]);
+        return ERR_INVALID_ARGUMENT; // todo Use appropriate error code
+    }
+
+    const char* imgfs_file_name = argv[1];
+    struct imgfs_file imgfs_file;
+
+    int open_result = do_open(imgfs_file_name, "rb", &imgfs_file); //todo Assuming "rb" mode as we're just reading the file
+
+    if (open_result != ERR_NONE) {
+        //todo Handle error (e.g., file not found, could not read, etc.)
+        return open_result;
+    }
+
+    int list_result = do_list(&imgfs_file, STDOUT); // STDOUT might be a placeholder for your actual output mode handling
+
+    do_close(&imgfs_file);
+
+    return list_result; // todo Return the result of listing operation
 }
 
 /**********************************************************************
@@ -54,7 +68,6 @@ int do_list_cmd(int argc, char** argv)
 ********************************************************************** */
 int do_create_cmd(int argc, char** argv)
 {
-
     puts("Create");
     /* **********************************************************************
      * TODO WEEK 08: WRITE YOUR CODE HERE (and change the return if needed).
