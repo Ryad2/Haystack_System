@@ -72,7 +72,6 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
     M_REQUIRE_NON_NULL(ptr);
     image = ptr;
 
-
     FILE* ptr = fopen(fileName, opningMode);
     M_REQUIRE_NON_NULL(ptr);
     image -> file = ptr;
@@ -100,10 +99,11 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
     return ERR_NONE;
 }
 
-int do_close(struct imgfs_file * image) {
+void do_close(struct imgfs_file * image) {
     M_REQUIRE_NON_NULL(image);
     fclose(image -> file);
     free(image -> metadata);
     free(image);
-    return ERR_NONE;
 }
+
+
