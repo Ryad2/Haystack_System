@@ -35,19 +35,19 @@ int main(int argc, char* argv[])
         argc--; argv++; // skips command call name
 
         int comm_qte = 4;
-        command chosen_comm = (void*);
-        command_mapping[] commands = {{"list", do_list_cmd},
+        command chosen_comm = NULL;
+        struct command_mapping commands[] = {{"list", do_list_cmd},
                                       {"create", do_create_cmd},
                                       {"help", help},
                                       {"delete", do_delete_cmd}};
 
         for(int i = 0; i < comm_qte; ++i) {
-            if (strcmp(argv[0], commands[i][0]) == 0) {
-                chosen_comm = commands[i][1];
+            if (strcmp(argv[0], commands[i].name) == 0) {
+                chosen_comm = commands[i].comm;
             }
         }
         argc--; argv++; // option used, now it can be discarded
-        if (chosen_comm == (void*)) {
+        if (chosen_comm == NULL) {
             ret = ERR_INVALID_COMMAND;
             help(argc, argv);
         } else { // FIXME do we need to add a NULL to argv

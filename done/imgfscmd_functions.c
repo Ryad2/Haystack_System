@@ -56,7 +56,7 @@ int do_list_cmd(int argc, char** argv) { //todo Check if the function implementa
         return open_result;
     }
 
-    int list_result = do_list(&imgfs_file, STDOUT); // STDOUT might be a placeholder for your actual output mode handling
+    int list_result = do_list(&imgfs_file, STDOUT, NULL); // STDOUT might be a placeholder for your actual output mode handling
 
     do_close(&imgfs_file);
 

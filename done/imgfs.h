@@ -58,7 +58,7 @@ struct imgfs_header {
 
 struct img_metadata { // sizeof must be 216
     char* img_id; // max size = MAX_IMG_ID, const?
-    unsigned char* sha; // SHA256_DIGEST_LENGTH elements
+    unsigned char* SHA; // SHA256_DIGEST_LENGTH elements
     uint32_t* orig_res; // 2 els
     uint32_t* size; // NB_RES els
     uint64_t* offset; //NB_RES els
