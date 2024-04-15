@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
                 chosen_comm = commands[i].comm;
             }
         }
-        argc--; argv++; // option used, now it can be discarded
+
         if (chosen_comm == NULL) {
             ret = ERR_INVALID_COMMAND;
             help(argc, argv);

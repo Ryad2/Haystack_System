@@ -33,8 +33,7 @@ static void sha_to_string(const unsigned char* SHA,
 /*******************************************************************
  * imgFS header display.
  */
-void print_header(const struct imgfs_header* header)
-{
+void print_header(const struct imgfs_header* header) {
     printf("*****************************************\n\
 ********** IMGFS HEADER START ***********\n");
     printf("TYPE: " STR_LENGTH_FMT(MAX_IMGFS_NAME) "\
@@ -82,18 +81,28 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
         fclose(image -> file); // file closing in case of an error
         return ERR_INVALID_ARGUMENT;
     } else {
+        printf("%d", header.max_files);
+        printf("%s", header.name);
+        //printf("%d",header.resized_res);
+        printf("%d", header.version);
+        printf("%d", header.nb_files);
+        printf("%d", header.unused_32);
+        printf("%lu", header.unused_64);
+
+
         image -> header = header;
     }
 
-    struct img_metadata metadata[header.max_files];
-    if (fread(metadata, sizeof(struct img_metadata), header.max_files , image -> file) != 1) {//todo check with assistants if lseek work perfectly in this case
+    printf("%d", (image -> header).max_files);
+    struct img_metadata metadata[(image -> header).max_files];
+    if (fread(metadata, sizeof(struct img_metadata), (image -> header).max_files , image -> file) != 1) {//todo check with assistants if lseek work perfectly in this case
         fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
         fclose(image -> file); // file closing in case of an error
         return ERR_INVALID_ARGUMENT;
     } else {
-        image -> metadata = calloc(header.max_files, sizeof(struct img_metadata));
+        image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
         M_REQUIRE_NON_NULL(image -> metadata);
-        memcpy(image -> metadata, metadata, header.max_files * sizeof(struct img_metadata));//copying metadata from the temp gotten from the file to the image
+        memcpy(image -> metadata, metadata, (image -> header).max_files * sizeof(struct img_metadata));//copying metadata from the temp gotten from the file to the image
     }
 
     return ERR_NONE;
