@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     if (argc < 2) {
         ret = ERR_NOT_ENOUGH_ARGUMENTS;
     } else {
-        argc--; argv++; // skips command call name
+        argc--; argv++; // skips ./
 
         int comm_qte = 4;
         command chosen_comm = NULL;
@@ -47,6 +47,7 @@ int main(int argc, char* argv[])
             }
         }
 
+        argc--; argv++; // skips command call name
         if (chosen_comm == NULL) {
             ret = ERR_INVALID_COMMAND;
             help(argc, argv);

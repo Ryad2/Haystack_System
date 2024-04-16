@@ -14,7 +14,7 @@
 TEST_DIR = $(PWD)/../provided/tests
 
 ## You can change the tag to run week07, week08, etc.
-IMAGE := chappeli/compsys24-feedback:latest
+IMAGE := chappeli/compsys24-feedback:week07
 
 #########################################################################
 # DO NOT EDIT BELOW THIS LINE

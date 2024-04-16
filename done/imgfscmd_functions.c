@@ -41,12 +41,15 @@ int help(int useless _unused, char** useless_too _unused)
  ********************************************************************** */
 int do_list_cmd(int argc, char** argv) { //todo Check if the function implementation is correct
 
-    if (argc != 2) {
-        printf("Usage: %s <imgfs_file>\n", argv[0]);
-        return ERR_INVALID_ARGUMENT; // todo Use appropriate error code
+    if (argc == 0) {
+        printf("Usage: no file name\n");
+        return ERR_INVALID_ARGUMENT;
+    } else if (argc > 1) {
+        printf("Usage: too many arguments\n");
+        return ERR_INVALID_COMMAND;
     }
 
-    const char* imgfs_file_name = argv[1];
+    const char* imgfs_file_name = argv[0];
     struct imgfs_file imgfs_file;
 
     int open_result = do_open(imgfs_file_name, "rb", &imgfs_file); //todo Assuming "rb" mode as we're just reading the file

@@ -67,42 +67,29 @@ ORIGINAL: %" PRIu32 " x %" PRIu32 "\n",
 }
 
 int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image) {
-    struct imgfs_file * ptr = calloc(sizeof(struct imgfs_file), 1);
+    M_REQUIRE_NON_NULL(fileName);
+    M_REQUIRE_NON_NULL(openingMode);
+    M_REQUIRE_NON_NULL(image);
+    /*struct imgfs_file * ptr = calloc(1, sizeof(struct imgfs_file));
     M_REQUIRE_NON_NULL(ptr);
-    image = ptr;
+    image = ptr;*/
 
-    FILE* temp = fopen(fileName, openingMode);
-    M_REQUIRE_NON_NULL(ptr);
-    image -> file = temp;
-
-    struct imgfs_header header;
-    if (fread(&header, sizeof(struct imgfs_header), 1, image -> file) != 1) {
-        fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
-        fclose(image -> file); // file closing in case of an error
-        return ERR_INVALID_ARGUMENT;
-    } else {
-        printf("%d", header.max_files);
-        printf("%s", header.name);
-        //printf("%d",header.resized_res);
-        printf("%d", header.version);
-        printf("%d", header.nb_files);
-        printf("%d", header.unused_32);
-        printf("%lu", header.unused_64);
-
-
-        image -> header = header;
+    image -> file = fopen(fileName, openingMode);
+    if (image -> file == NULL) {
+        return ERR_IO;
     }
 
-    printf("%d", (image -> header).max_files);
-    struct img_metadata metadata[(image -> header).max_files];
-    if (fread(metadata, sizeof(struct img_metadata), (image -> header).max_files , image -> file) != 1) {//todo check with assistants if lseek work perfectly in this case
+    if (fread(&image->header, sizeof(struct imgfs_header), 1, image -> file) != 1) {
         fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
         fclose(image -> file); // file closing in case of an error
-        return ERR_INVALID_ARGUMENT;
-    } else {
-        image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
-        M_REQUIRE_NON_NULL(image -> metadata);
-        memcpy(image -> metadata, metadata, (image -> header).max_files * sizeof(struct img_metadata));//copying metadata from the temp gotten from the file to the image
+        return ERR_IO;
+    }
+
+    image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
+    if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files , image -> file) != (image -> header).max_files) {//todo check with assistants if lseek work perfectly in this case
+        fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
+        fclose(image -> file); // file closing in case of an error
+        return ERR_IO;
     }
 
     return ERR_NONE;
@@ -110,10 +97,11 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
 
 void do_close(struct imgfs_file * image) {
     // M_REQUIRE_NON_NULL(image); returns an error code so not usable in void func
-    if (image != NULL) {
-        fclose(image->file);
+    if (image != NULL ) {
         free(image->metadata);
-        free(image);
+        if (image->file) {
+            fclose(image->file);
+        }
     }
 }
 
