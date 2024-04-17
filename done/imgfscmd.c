@@ -50,9 +50,8 @@ int main(int argc, char* argv[])
         argc--; argv++; // skips command call name
         if (chosen_comm == NULL) {
             ret = ERR_INVALID_COMMAND;
-            help(argc, argv);
-        } else { // FIXME do we need to add a NULL to argv
-            chosen_comm(argc, argv);
+        } else {
+            ret = chosen_comm(argc, argv);
         }
 
     }

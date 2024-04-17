@@ -2,15 +2,17 @@
 #include <string.h>
 
 int do_delete(const char* img_id, struct imgfs_file* imgfs_file){
+    M_REQUIRE_NON_NULL(img_id);
+    M_REQUIRE_NON_NULL(imgfs_file);
     int pos = -1;
-    for(int i = 0; i < imgfs_file->header.max_files; ++i) {
+    for(unsigned int i = 0; i < imgfs_file->header.max_files; ++i) {
         if (strcmp(img_id, imgfs_file->metadata[i].img_id) == 0) {
             pos = i;
         }
     }
 
-    if (pos == -1) {
-        return ERR_IMAGE_NOT_FOUND; //TODO is it the good err code ?
+    if (pos == -1 || imgfs_file->metadata[pos].is_valid == EMPTY) {
+        return ERR_IMAGE_NOT_FOUND;
     }
 
     imgfs_file->metadata[pos].is_valid = EMPTY;
@@ -23,7 +25,7 @@ int do_delete(const char* img_id, struct imgfs_file* imgfs_file){
     }
 
     imgfs_file->header.nb_files--;
-    imgfs_file.header.version++;
+    imgfs_file->header.version++;
 
     //rewrite header to disk
     fseek(imgfs_file->file, 0, SEEK_SET);

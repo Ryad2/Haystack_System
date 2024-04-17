@@ -41,7 +41,8 @@ int help(int useless _unused, char** useless_too _unused)
            "          -small_res <X_RES> <Y_RES>: resolution for small images.\n"
            "                                  default value is 256x256\n"
            "                                  maximum value is 512x512\n"
-           "  delete <imgFS_filename> <imgID>: delete image imgID from imgFS.") // copied and pasted directly
+           "  delete <imgFS_filename> <imgID>: delete image imgID from imgFS.\n"); // copied and pasted directly
+    fflush(stdout);
     return ERR_NONE;
 }
 
@@ -81,15 +82,16 @@ int do_list_cmd(int argc, char** argv) { //todo Check if the function implementa
 int do_create_cmd(int argc, char** argv)
 {
     if (argc == 0) {
-        return ERR_NOT_ENOUGH_ARGUMENTS;
+        return ERR_INVALID_ARGUMENT;
     }
     const char* imgfs_filename = argv[0];
     --argc; ++argv; //filename used
 
 
-    uint32_t max_files = default_max_files;
-    uint16_t thumb_res[2] = default_thumb_res;
-    uint16_t small_res[2] = default_small_res;
+    struct imgfs_file newfile;
+    newfile.header.max_files = default_max_files;
+    newfile.header.resized_res[0] = newfile.header.resized_res[1] = default_thumb_res;
+    newfile.header.resized_res[2] = newfile.header.resized_res[3] = default_small_res;
 
     while (argc > 0) {
         if(strcmp(argv[0], "-max_files") == 0) {
@@ -97,8 +99,8 @@ int do_create_cmd(int argc, char** argv)
                 return ERR_NOT_ENOUGH_ARGUMENTS;
             }
 
-            max_files = atouint32(argv[1]);
-            if (max_files == 0) {
+            newfile.header.max_files = atouint32(argv[1]);
+            if (newfile.header.max_files == 0) {
                 return ERR_MAX_FILES;
             }
 
@@ -109,9 +111,10 @@ int do_create_cmd(int argc, char** argv)
                 return ERR_NOT_ENOUGH_ARGUMENTS;
             }
 
-            thumb_res[0] = atouint16(argv[1]);
-            thumb_res[1] = atouint16(argv[2]);
-            if (thumb_res[0] == 0 || thumb_res[1] == 0 || thumb_res[0] > MAX_THUMB_RES || thumb_res[1] == MAX_THUMB_RES) {
+            newfile.header.resized_res[0] = atouint16(argv[1]);
+            newfile.header.resized_res[1] = atouint16(argv[2]);
+            if (newfile.header.resized_res[0] == 0 || newfile.header.resized_res[1] == 0 ||
+                newfile.header.resized_res[0] > MAX_THUMB_RES || newfile.header.resized_res[1] > MAX_THUMB_RES) {
                 return ERR_RESOLUTIONS;
             }
 
@@ -122,22 +125,24 @@ int do_create_cmd(int argc, char** argv)
                 return ERR_NOT_ENOUGH_ARGUMENTS;
             }
 
-            small_res[0] = atouint16(argv[1]);
-            small_res[1] = atouint16(argv[2]);
-            if (small_res[0] == 0 || small_res[1] == 0 || small_res[0] > MAX_THUMB_RES || small_res[1] == MAX_THUMB_RES) {
+            newfile.header.resized_res[2] = atouint16(argv[1]);
+            newfile.header.resized_res[3] = atouint16(argv[2]);
+            if (newfile.header.resized_res[2] == 0 || newfile.header.resized_res[3] == 0 ||
+                newfile.header.resized_res[2] > MAX_SMALL_RES || newfile.header.resized_res[3] > MAX_SMALL_RES) {
                 return ERR_RESOLUTIONS;
             }
 
             argc -= 3; argv += 3;
         } else {
-            return ERR_INVALID_COMMAND //TODO is it the good error code ?
+            return ERR_INVALID_ARGUMENT;
         }
     }
-
-    struct imgfs_file newfile;
-    newfile.header.max_files = max_files;
-    newfile.header.resized_res = {thumb_res[0], thumb_res[1], small_res[0], small_res[1]};
-    return do_create(imgfs_filename, newfile);
+    int lastErr = do_create(imgfs_filename, &newfile);
+    if (lastErr != ERR_NONE) {
+        return lastErr;
+    }
+    do_close(&newfile);
+    return ERR_NONE;
 }
 
 /**********************************************************************
@@ -145,6 +150,7 @@ int do_create_cmd(int argc, char** argv)
  */
 int do_delete_cmd(int argc, char** argv)
 {
+    M_REQUIRE_NON_NULL(argv);
     if(argc < 2) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
     } else if (0 == strlen(argv[1])|| MAX_IMG_ID < strlen(argv[1])) {
@@ -153,17 +159,15 @@ int do_delete_cmd(int argc, char** argv)
 
     struct imgfs_file imgfs_file;
     int lastErr = ERR_NONE;
-    lastErr = do_open(argv[0], "wb", &imgfs_file);
+    lastErr = do_open(argv[0], "rb+", &imgfs_file);
 
     if (lastErr != ERR_NONE) {
+        do_close(&imgfs_file);
         return lastErr;
     }
 
-    lastErr = do_delete(argv[1], imgfs_file);
+    lastErr = do_delete(argv[1], &imgfs_file);
 
-    if (lastErr != ERR_NONE) {
-        return lastErr;
-    }
-
-    return do_close(imgfs_file);
+    do_close(&imgfs_file);
+    return lastErr;
 }

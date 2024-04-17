@@ -80,14 +80,13 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
     }
 
     if (fread(&image->header, sizeof(struct imgfs_header), 1, image -> file) != 1) {
-        fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
         fclose(image -> file); // file closing in case of an error
         return ERR_IO;
     }
 
     image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
     if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files , image -> file) != (image -> header).max_files) {//todo check with assistants if lseek work perfectly in this case
-        fprintf(stderr, "Error while reading the header\n");//todo check if ok this error managing is great
+        //todo check if ok this error managing is great
         fclose(image -> file); // file closing in case of an error
         return ERR_IO;
     }
