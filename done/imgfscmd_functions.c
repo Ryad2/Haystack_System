@@ -71,13 +71,59 @@ int do_list_cmd(int argc, char** argv) { //todo Check if the function implementa
 ********************************************************************** */
 int do_create_cmd(int argc, char** argv)
 {
-    puts("Create");
-    /* **********************************************************************
-     * TODO WEEK 08: WRITE YOUR CODE HERE (and change the return if needed).
-     * **********************************************************************
-     */
+    if (argc == 0) {
+        return ERR_NOT_ENOUGH_ARGUMENTS;
+    }
+    const char* imgfs_filename = argv[0];
+    --argc; ++argv; //filename used
 
-    TO_BE_IMPLEMENTED();
+
+    uint32_t max_files = default_max_files;
+    uint16_t thumb_res[2] = default_thumb_res;
+    uint16_t small_res[2] = default_small_res;
+
+    while (argc > 0) {
+        if(strcmp(argv[0], "-max_files") == 0) {
+            if (argc < 2) {
+                return ERR_NOT_ENOUGH_ARGUMENTS;
+            }
+
+            max_files = atouint32(argv[1]);
+            if (max_files == 0) {
+                return ERR_MAX_FILES;
+            }
+
+            argc -= 2; argv +=2; //used "-max_files" and the value
+
+        } else if(strcmp(argv[0], "-thumb_res") == 0) {
+            if (argc < 3) {
+                return ERR_NOT_ENOUGH_ARGUMENTS;
+            }
+
+            thumb_res[0] = atouint16(argv[1]);
+            thumb_res[1] = atouint16(argv[2]);
+            if (thumb_res[0] == 0 || thumb_res[1] == 0 || thumb_res[0] > MAX_THUMB_RES || thumb_res[1] == MAX_THUMB_RES) {
+                return ERR_RESOLUTIONS;
+            }
+
+            argc -= 3; argv += 3;
+
+        } else if(strcmp(argv[0], "-small_res") == 0) {
+            if (argc < 3) {
+                return ERR_NOT_ENOUGH_ARGUMENTS;
+            }
+
+            small_res[0] = atouint16(argv[1]);
+            small_res[1] = atouint16(argv[2]);
+            if (small_res[0] == 0 || small_res[1] == 0 || small_res[0] > MAX_THUMB_RES || small_res[1] == MAX_THUMB_RES) {
+                return ERR_RESOLUTIONS;
+            }
+
+            argc -= 3; argv += 3;
+        } else {
+            return ERR_INVALID_COMMAND //TODO is it the good error code ?
+        }
+    }
     return NOT_IMPLEMENTED;
 }
 
