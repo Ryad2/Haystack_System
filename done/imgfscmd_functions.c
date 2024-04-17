@@ -27,13 +27,22 @@ static const uint16_t MAX_SMALL_RES = 512;
  ********************************************************************** */
 int help(int useless _unused, char** useless_too _unused)
 {
-    /* **********************************************************************
-     * TODO WEEK 08: WRITE YOUR CODE HERE.
-     * **********************************************************************
-     */
-
-    TO_BE_IMPLEMENTED();
-    return NOT_IMPLEMENTED;
+    printf("imgfscmd [COMMAND] [ARGUMENTS]\n"
+           "  help: displays this help.\n"
+           "  list <imgFS_filename>: list imgFS content.\n"
+           "  create <imgFS_filename> [options]: create a new imgFS.\n"
+           "      options are:\n"
+           "          -max_files <MAX_FILES>: maximum number of files.\n"
+           "                                  default value is 128\n"
+           "                                  maximum value is 4294967295\n"
+           "          -thumb_res <X_RES> <Y_RES>: resolution for thumbnail images.\n"
+           "                                  default value is 64x64\n"
+           "                                  maximum value is 128x128\n"
+           "          -small_res <X_RES> <Y_RES>: resolution for small images.\n"
+           "                                  default value is 256x256\n"
+           "                                  maximum value is 512x512\n"
+           "  delete <imgFS_filename> <imgID>: delete image imgID from imgFS.") // copied and pasted directly
+    return ERR_NONE;
 }
 
 /**********************************************************************
@@ -124,7 +133,11 @@ int do_create_cmd(int argc, char** argv)
             return ERR_INVALID_COMMAND //TODO is it the good error code ?
         }
     }
-    return NOT_IMPLEMENTED;
+
+    struct imgfs_file newfile;
+    newfile.header.max_files = max_files;
+    newfile.header.resized_res = {thumb_res[0], thumb_res[1], small_res[0], small_res[1]};
+    return do_create(imgfs_filename, newfile);
 }
 
 /**********************************************************************
@@ -132,11 +145,25 @@ int do_create_cmd(int argc, char** argv)
  */
 int do_delete_cmd(int argc, char** argv)
 {
-    /* **********************************************************************
-     * TODO WEEK 08: WRITE YOUR CODE HERE (and change the return if needed).
-     * **********************************************************************
-     */
+    if(argc < 2) {
+        return ERR_NOT_ENOUGH_ARGUMENTS;
+    } else if (0 == strlen(argv[1])|| MAX_IMG_ID < strlen(argv[1])) {
+        return ERR_INVALID_IMGID;
+    }
 
-    TO_BE_IMPLEMENTED();
-    return NOT_IMPLEMENTED;
+    struct imgfs_file imgfs_file;
+    int lastErr = ERR_NONE;
+    lastErr = do_open(argv[0], "wb", &imgfs_file);
+
+    if (lastErr != ERR_NONE) {
+        return lastErr;
+    }
+
+    lastErr = do_delete(argv[1], imgfs_file);
+
+    if (lastErr != ERR_NONE) {
+        return lastErr;
+    }
+
+    return do_close(imgfs_file);
 }
