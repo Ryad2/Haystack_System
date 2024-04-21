@@ -27,6 +27,7 @@ struct command_mapping {
  */
 int main(int argc, char* argv[])
 {
+    VIPS_INIT(argv[0]);
     int ret = 0;
 
     if (argc < 2) {
@@ -61,5 +62,6 @@ int main(int argc, char* argv[])
         help(argc, argv);
     }
 
+    vips_shutdown();
     return ret;
 }
