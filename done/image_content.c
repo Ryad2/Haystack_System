@@ -4,72 +4,103 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 
-int lazily_resize(int resolution,
-                  struct imgfs_file* imgfs_file,
-                  size_t index){
+
+int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
 
     M_REQUIRE_NON_NULL(imgfs_file);
     M_REQUIRE_NON_NULL(imgfs_file->file);//TODO check if this is necessary
     M_REQUIRE_NON_NULL(imgfs_file->metadata);//TODO check if this is necessary
-    if (index >= imgfs_file->header.max_files || imgfs_file->metadata[index].is_valid == EMPTY) {
+    if (index >= imgfs_file->header.max_files
+    || imgfs_file->metadata[index].is_valid == EMPTY) {
         return ERR_INVALID_ARGUMENT;
     }
 
     // Retrieve metadata for the image at the specified index
-    struct img_metadata* metadata = &imgfs_file->metadata[index];
+    struct img_metadata* metadata = &imgfs_file -> metadata[index];
 
     // Check if the requested resolution already exists
-    if ((resolution == metadata->orig_res[0])||
-        (resolution == SMALL_RES && metadata->small_offset != 0 && metadata->small_size != 0)
-        || (resolution == ORIG_RES && metadata->orig_offset != 0 && metadata->orig_size != 0)) {
-        return ERR_NONE;  // Image already resized in the requested resolution
+    if ( (metadata -> size[resolution] != 0) || (resolution == ORIG_RES ) {
+        return ERR_NONE;
     }
+
 
     // Load the original image from its offset
-    VipsImage *in, *out;
     size_t length;
-    void* image_buffer = get_image_buffer(imgfs_file,
-                                          metadata->orig_offset,
-                                          metadata->orig_size, &length);
-
-    if (vips_jpegload_buffer(image_buffer, length, &in, NULL)) {
-        return ERR_VIPS_LOAD_FAIL;  // VIPS load error
+    void* image_buffer = malloc(metadata->size[ORIG_RES]);
+    if (image_buffer == NULL) {
+        return ERR_OUT_OF_MEMORY;  // Memory allocation error
     }
+    if (fseek(imgfs_file->file, metadata->offset[ORIG_RES], SEEK_SET)) {
+        free(image_buffer);
+        return ERR_IO;  // File seek error
+    }//TODO check error
 
-    int target_width = resolution == THUMB_RES ? 128 : 640; // Example sizes for thumbnail and small
+    if(fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file)) {
+        free(image_buffer);
+        return ERR_IO;
+    }//TODO check error
 
-    // Create a thumbnail of the image at the desired resolution
-    if (vips_thumbnail_image(in, &out, target_width,
-                             "height", target_width, NULL)) {
-        g_object_unref(in);  // Clean up original image object
-        return ERR_VIPS_RESIZE_FAIL;  // VIPS resize error
-    }
+    VipsImage *in, *out;
 
-    // Save the resized image to a buffer
-    void* resized_buffer;
-    size_t resized_length;
-    if (vips_jpegsave_buffer(out, &resized_buffer, &resized_length, NULL)) {
+    if (vips_jpegload_buffer(image_buffer, metadata -> size[ORIG_RES], &in, NULL)) {
         g_object_unref(in);
         g_object_unref(out);
-        return ERR_VIPS_SAVE_FAIL;  // VIPS save error
+        free(image_buffer);
+        return ERR_IMGLIB;  //TODO check error
     }
 
-    // Update the metadata and imgfs file
-    if (resolution == THUMB_RES) {
-        metadata->thumb_offset = append_to_imgfs(imgfs_file, resized_buffer, resized_length);
-        metadata->thumb_size = resized_length;
-    } else { // SMALL_RES
-        metadata->small_offset = append_to_imgfs(imgfs_file, resized_buffer, resized_length);
-        metadata->small_size = resized_length;
+    // extracting the corresponding width from the header
+    int target_width = imgfs_file -> header.resized_res[2 * resolution];
+
+    // extracting the corresponding height from the header
+    int target_height = imgfs_file -> header.resized_res[2 * resolution + 1];
+
+    // Create a thumbnail of the image at the desired resolution
+    if (vips_thumbnail_image(in, &out, target_width, target_height, NULL)) {
+        g_object_unref(in);
+        g_object_unref(out);
+        free(image_buffer);
+        return ERR_IMGLIB;  //TODO check error
     }
+
+    // Saving the resized image to a buffer
+    void* resized_buffer = NULL;
+    size_t resized_length = 0;
+
+    if ( vips_jpegsave_buffer(out, &resized_buffer, &resized_length, NULL) ) {
+        g_object_unref(in);
+        g_object_unref(out);
+        free(resized_buffer);
+        free(image_buffer);
+        return ERR_IMGLIB;  //todo check error
+    }
+
+    //open the file in append mode
+    FILE *file = fopen(imgfs_file -> file, "ab");
+    if (file == NULL) {
+        g_object_unref(in);
+        g_object_unref(out);
+        free(resized_buffer);
+        free(image_buffer);
+        close (file);
+        return ERR_IO;      //todo check error
+    }
+    fwrite(data, sizeof(char), resized_length, file); //char is the size of one Byte
+
+    // Update the metadata with the new image size and offset
+    metadata -> size[resolution]   = resized_length;
+    metadata -> offset[resolution] = ftell(file) - resized_length;
+
 
     // Clean up
+    close (file);
     g_object_unref(in);
     g_object_unref(out);
     free(resized_buffer);
-
+    free(image_buffer);
     return ERR_NONE; // Success
 
 }
