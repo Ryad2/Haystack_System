@@ -13,6 +13,7 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
     M_REQUIRE_NON_NULL(imgfs_file);
     M_REQUIRE_NON_NULL(imgfs_file->file);//TODO check if this is necessary
     M_REQUIRE_NON_NULL(imgfs_file->metadata);//TODO check if this is necessary
+
     if (index >= imgfs_file->header.max_files
     || imgfs_file->metadata[index].is_valid == EMPTY) {
         return ERR_INVALID_ARGUMENT;
