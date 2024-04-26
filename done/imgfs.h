@@ -57,8 +57,8 @@ struct imgfs_header {
 };
 
 struct img_metadata { // sizeof must be 216
-    char img_id[MAX_IMG_ID+1];
-    unsigned char SHA[SHA256_DIGEST_LENGTH];
+    char img_id[MAX_IMG_ID + 1]; // todo not convainced by the +1
+    unsigned char SHA[SHA256_DIGEST_LENGTH];// todo where is this defined
     uint32_t orig_res[2];
     uint32_t size[NB_RES];
     uint64_t offset[NB_RES];
