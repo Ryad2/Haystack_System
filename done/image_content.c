@@ -39,7 +39,8 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IO;  // File seek error
     }//TODO check error
 
-    if(metadata->size[ORIG_RES] > fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file)) {
+    size_t read = fread(image_buffer, sizeof(struct img_metadata), metadata->size[ORIG_RES], imgfs_file->file); //todo check the sizeof(char) cuz one byte
+    if( metadata->size[ORIG_RES] > read ) {
         free(image_buffer);
         return ERR_IO;
     }//TODO check error
