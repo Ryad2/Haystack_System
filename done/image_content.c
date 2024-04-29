@@ -23,7 +23,7 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
     struct img_metadata* metadata = &imgfs_file -> metadata[index];
 
     // Check if the requested resolution already exists
-    if ( (metadata -> size[resolution] != 0) || (resolution == ORIG_RES ) {
+    if ( (metadata -> size[resolution] != 0) || (resolution == ORIG_RES ) ){
         return ERR_NONE;
     }
 
@@ -89,7 +89,7 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         close (file);
         return ERR_IO;      //todo check error
     }
-    fwrite(data, sizeof(char), resized_length, file); //char is the size of one Byte
+    fwrite(out, sizeof(char), resized_length, file); //char is the size of one Byte
 
     // Update the metadata with the new image size and offset
     metadata -> size[resolution]   = resized_length;
