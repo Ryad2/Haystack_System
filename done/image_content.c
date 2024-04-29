@@ -16,7 +16,7 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
 
     if (index >= imgfs_file->header.max_files
     || imgfs_file->metadata[index].is_valid == EMPTY) {
-        return ERR_INVALID_ARGUMENT;
+        return ERR_INVALID_IMGID;
     }
 
     // Retrieve metadata for the image at the specified index
@@ -39,7 +39,7 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IO;  // File seek error
     }//TODO check error
 
-    if(fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file)) {
+    if(metadata->size[ORIG_RES] > fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file)) {
         free(image_buffer);
         return ERR_IO;
     }//TODO check error

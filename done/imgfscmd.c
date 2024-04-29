@@ -13,6 +13,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <vips/vips.h>
+
 
 
 typedef int (*command)(int, char*[]);
