@@ -57,8 +57,8 @@ struct imgfs_header {
 };
 
 struct img_metadata { // sizeof must be 216
-    char img_id[MAX_IMG_ID + 1]; // todo not convainced by the +1
-    unsigned char SHA[SHA256_DIGEST_LENGTH];// todo where is this defined
+    char img_id[MAX_IMG_ID + 1]; // +1 for the /0 needed by strings
+    unsigned char SHA[SHA256_DIGEST_LENGTH];
     uint32_t orig_res[2];
     uint32_t size[NB_RES];
     uint64_t offset[NB_RES];
@@ -69,7 +69,7 @@ struct img_metadata { // sizeof must be 216
 struct imgfs_file {
     FILE* file;
     struct imgfs_header header;
-    struct img_metadata* metadata;//todo should be dynamic array
+    struct img_metadata* metadata;
 };
 
 

@@ -49,7 +49,7 @@ int help(int useless _unused, char** useless_too _unused)
 /**********************************************************************
  * Opens imgFS file and calls do_list().
  ********************************************************************** */
-int do_list_cmd(int argc, char** argv) { //todo Check if the function implementation is correct
+int do_list_cmd(int argc, char** argv) {
 
     if (argc == 0) {
         printf("Usage: no file name\n");
@@ -62,7 +62,7 @@ int do_list_cmd(int argc, char** argv) { //todo Check if the function implementa
     const char* imgfs_file_name = argv[0];
     struct imgfs_file imgfs_file;
 
-    int open_result = do_open(imgfs_file_name, "rb", &imgfs_file); //todo Assuming "rb" mode as we're just reading the file
+    int open_result = do_open(imgfs_file_name, "rb", &imgfs_file);
 
     if (open_result != ERR_NONE) {
         //todo Handle error (e.g., file not found, could not read, etc.)
@@ -81,8 +81,10 @@ int do_list_cmd(int argc, char** argv) { //todo Check if the function implementa
 ********************************************************************** */
 int do_create_cmd(int argc, char** argv)
 {
+    M_REQUIRE_NON_NULL(argv);
+
     if (argc == 0) {
-        return ERR_INVALID_ARGUMENT;
+        return ERR_NOT_ENOUGH_ARGUMENTS;
     }
     const char* imgfs_filename = argv[0];
     --argc; ++argv; //filename used
