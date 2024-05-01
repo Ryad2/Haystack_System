@@ -100,11 +100,17 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
 
     int metadata_offset = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);
     if (fseek(imgfs_file->file, metadata_offset, SEEK_SET)) {
+        g_object_unref(in);
+        g_object_unref(out);
+        free(resized_buffer);
         free(image_buffer);
         return ERR_IO;  // File seek error
     }
 
     if(!fwrite(metadata, sizeof(struct img_metadata), 1, imgfs_file -> file)){
+        g_object_unref(in);
+        g_object_unref(out);
+        free(resized_buffer);
         free(image_buffer);
         return ERR_IO;      //todo check error
     }    
@@ -117,6 +123,8 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
     free(resized_buffer);
     free(image_buffer);
     return ERR_NONE; // Success
+
+    // all test work
 
 }
 
