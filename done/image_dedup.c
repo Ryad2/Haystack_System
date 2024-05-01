@@ -39,6 +39,8 @@ int do_name_and_content_dedup(struct imgfs_file* imgfs_file, uint32_t index){
                 if (!strncmp((const char *) metadata -> SHA, (const char *) current_metadata -> SHA, SHA256_DIGEST_LENGTH)) {
                     printf("i got in the loop \n");
                     memcpy(metadata -> offset, current_metadata -> offset, NB_RES*sizeof(uint64_t));
+                    memcpy(metadata -> offset, current_metadata -> offset, NB_RES*sizeof(uint64_t));// todo check if we should change the size
+
                     count++;
                 }
             }    
