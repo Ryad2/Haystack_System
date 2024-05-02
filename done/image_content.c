@@ -8,14 +8,15 @@
 
 
 
-int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
+int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index)
+{
 
     M_REQUIRE_NON_NULL(imgfs_file);
-    M_REQUIRE_NON_NULL(imgfs_file->file);//TODO check if this is necessary
-    M_REQUIRE_NON_NULL(imgfs_file->metadata);//TODO check if this is necessary
+    M_REQUIRE_NON_NULL(imgfs_file->file);
+    M_REQUIRE_NON_NULL(imgfs_file->metadata);
 
-    if (index >= imgfs_file->header.max_files
-    || imgfs_file->metadata[index].is_valid == EMPTY) {
+    if (index >= imgfs_file->header.max_files || 
+        imgfs_file->metadata[index].is_valid == EMPTY) {
         return ERR_INVALID_IMGID;
     }
 
@@ -23,28 +24,27 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
     struct img_metadata* metadata = &imgfs_file -> metadata[index];
 
     // Check if the requested resolution already exists
-    if ( (metadata -> size[resolution] != 0) || (resolution == ORIG_RES ) ){
+    if ( (metadata -> size[resolution] != 0) || (resolution == ORIG_RES ) ) {
         return ERR_NONE;
     }
-    /*if (index == 0 && resolution != ORIG_RES){
-        return ERR_IO;
-    }*/
+    
     // Load the original image from its offset
     size_t length;
     void* image_buffer = malloc(metadata->size[ORIG_RES]);
     if (image_buffer == NULL) {
         return ERR_OUT_OF_MEMORY;  // Memory allocation error
     }
+
     if (fseek(imgfs_file->file, metadata->offset[ORIG_RES], SEEK_SET)) {
         free(image_buffer);
         return ERR_IO;  // File seek error
-    }//TODO check error
+    }
 
-    size_t read = fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file); //todo check the sizeof(char) cuz one byte
+    size_t read = fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file);
     if( read != 1 ) {
         free(image_buffer);
         return ERR_IO;
-    }//TODO check error
+    }
 
     VipsImage *in, *out;
 
@@ -52,7 +52,7 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         g_object_unref(in);
         g_object_unref(out);
         free(image_buffer);
-        return ERR_IMGLIB;  //TODO check error
+        return ERR_IMGLIB;
     }
 
     // extracting the corresponding width from the header
@@ -66,19 +66,19 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         g_object_unref(in);
         g_object_unref(out);
         free(image_buffer);
-        return ERR_IMGLIB;  //TODO check error
+        return ERR_IMGLIB;
     }
 
     // Saving the resized image to a buffer
     void* resized_buffer = NULL;
     size_t resized_length = 0;
 
-    if ( vips_jpegsave_buffer(out, &resized_buffer, &resized_length, NULL) ) {
+    if (vips_jpegsave_buffer(out, &resized_buffer, &resized_length, NULL)) {
         g_object_unref(in);
         g_object_unref(out);
         free(resized_buffer);
         free(image_buffer);
-        return ERR_IMGLIB;  //todo check error
+        return ERR_IMGLIB;
     }
 
     if (fseek(imgfs_file->file, 0, SEEK_END)) {
@@ -88,15 +88,16 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
 
     metadata -> offset[resolution] = ftell(imgfs_file -> file);
     metadata -> size[resolution]   = resized_length;
-    //open the file in append mode
-    if(!fwrite(resized_buffer, sizeof(char), resized_length, imgfs_file -> file)){
+
+
+    if(!fwrite(resized_buffer, resized_length, 1, imgfs_file -> file)) {
         g_object_unref(in);
         g_object_unref(out);
         free(resized_buffer);
         free(image_buffer);
-        return ERR_IO;      //todo check error
+        return ERR_IO;
 
-    } //char is the size of one Byte
+    }
 
     int metadata_offset = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);
     if (fseek(imgfs_file->file, metadata_offset, SEEK_SET)) {
@@ -107,24 +108,19 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IO;  // File seek error
     }
 
-    if(!fwrite(metadata, sizeof(struct img_metadata), 1, imgfs_file -> file)){
+    if(!fwrite(metadata, sizeof(struct img_metadata), 1, imgfs_file -> file)) {
         g_object_unref(in);
         g_object_unref(out);
         free(resized_buffer);
         free(image_buffer);
-        return ERR_IO;      //todo check error
-    }    
-    
-
+        return ERR_IO;
+    }
 
     // Clean up
     g_object_unref(in);
     g_object_unref(out);
     free(resized_buffer);
     free(image_buffer);
-    return ERR_NONE; // Success
-
-    // all test work
-
+    return ERR_NONE;
 }
 

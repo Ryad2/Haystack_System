@@ -49,7 +49,8 @@ int help(int useless _unused, char** useless_too _unused)
 /**********************************************************************
  * Opens imgFS file and calls do_list().
  ********************************************************************** */
-int do_list_cmd(int argc, char** argv) {
+int do_list_cmd(int argc, char** argv)
+{
 
     if (argc == 0) {
         printf("Usage: no file name\n");
@@ -65,7 +66,7 @@ int do_list_cmd(int argc, char** argv) {
     int open_result = do_open(imgfs_file_name, "rb", &imgfs_file);
 
     if (open_result != ERR_NONE) {
-        //todo Handle error (e.g., file not found, could not read, etc.)
+        do_close(&imgfs_file);
         return open_result;
     }
 
@@ -73,7 +74,7 @@ int do_list_cmd(int argc, char** argv) {
 
     do_close(&imgfs_file);
 
-    return list_result; // todo Return the result of listing operation
+    return list_result;
 }
 
 /**********************************************************************
@@ -86,8 +87,10 @@ int do_create_cmd(int argc, char** argv)
     if (argc == 0) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
     }
+
+    // Filename used
     const char* imgfs_filename = argv[0];
-    --argc; ++argv; //filename used
+    --argc; ++argv; 
 
 
     struct imgfs_file newfile;
@@ -95,7 +98,9 @@ int do_create_cmd(int argc, char** argv)
     newfile.header.resized_res[0] = newfile.header.resized_res[1] = default_thumb_res;
     newfile.header.resized_res[2] = newfile.header.resized_res[3] = default_small_res;
 
+    // Going through optional arguments
     while (argc > 0) {
+        // -------------------- MAX FILES --------------------
         if(strcmp(argv[0], "-max_files") == 0) {
             if (argc < 2) {
                 return ERR_NOT_ENOUGH_ARGUMENTS;
@@ -106,8 +111,10 @@ int do_create_cmd(int argc, char** argv)
                 return ERR_MAX_FILES;
             }
 
-            argc -= 2; argv +=2; //used "-max_files" and the value
+            // Used "-max_files" and the value
+            argc -= 2; argv +=2; 
 
+        // -------------------- THUMB RES --------------------
         } else if(strcmp(argv[0], "-thumb_res") == 0) {
             if (argc < 3) {
                 return ERR_NOT_ENOUGH_ARGUMENTS;
@@ -120,8 +127,10 @@ int do_create_cmd(int argc, char** argv)
                 return ERR_RESOLUTIONS;
             }
 
+            // Used "-thumb_res" and the two values
             argc -= 3; argv += 3;
 
+        // -------------------- SMALL RES --------------------
         } else if(strcmp(argv[0], "-small_res") == 0) {
             if (argc < 3) {
                 return ERR_NOT_ENOUGH_ARGUMENTS;
@@ -134,17 +143,19 @@ int do_create_cmd(int argc, char** argv)
                 return ERR_RESOLUTIONS;
             }
 
+            // Used "-small_res" and the two values
             argc -= 3; argv += 3;
+
         } else {
             return ERR_INVALID_ARGUMENT;
         }
     }
-    int lastErr = do_create(imgfs_filename, &newfile);
-    if (lastErr != ERR_NONE) {
-        return lastErr;
-    }
+
+    int create_error = do_create(imgfs_filename, &newfile);
+    
+    // No need to check if we had an error here, we always close the file and return the error code
     do_close(&newfile);
-    return ERR_NONE;
+    return create_error;
 }
 
 /**********************************************************************
@@ -153,9 +164,10 @@ int do_create_cmd(int argc, char** argv)
 int do_delete_cmd(int argc, char** argv)
 {
     M_REQUIRE_NON_NULL(argv);
+
     if(argc < 2) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
-    } else if (0 == strlen(argv[1])|| MAX_IMG_ID < strlen(argv[1])) {
+    } else if (0 == strlen(argv[1]) || MAX_IMG_ID < strlen(argv[1])) {
         return ERR_INVALID_IMGID;
     }
 

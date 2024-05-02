@@ -39,10 +39,12 @@ int main(int argc, char* argv[])
 
         int comm_qte = 4;
         command chosen_comm = NULL;
-        struct command_mapping commands[] = {{"list", do_list_cmd},
-                                      {"create", do_create_cmd},
-                                      {"help", help},
-                                      {"delete", do_delete_cmd}};
+        struct command_mapping commands[] = {
+            {"list", do_list_cmd},
+            {"create", do_create_cmd},
+            {"help", help},
+            {"delete", do_delete_cmd}
+        };
 
         for(int i = 0; i < comm_qte; ++i) {
             if (strcmp(argv[0], commands[i].name) == 0) {

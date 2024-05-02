@@ -19,7 +19,8 @@
  * Human-readable SHA
  */
 static void sha_to_string(const unsigned char* SHA,
-                          char* sha_string) {
+                          char* sha_string)
+{
 
     if (SHA == NULL) return;
 
@@ -33,7 +34,8 @@ static void sha_to_string(const unsigned char* SHA,
 /*******************************************************************
  * imgFS header display.
  */
-void print_header(const struct imgfs_header* header) {
+void print_header(const struct imgfs_header* header)
+{
     printf("*****************************************\n\
 ********** IMGFS HEADER START ***********\n");
     printf("TYPE: " STR_LENGTH_FMT(MAX_IMGFS_NAME) "\
@@ -66,35 +68,36 @@ ORIGINAL: %" PRIu32 " x %" PRIu32 "\n",
     printf("*****************************************\n");
 }
 
-int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image) {
+int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image)
+{
     M_REQUIRE_NON_NULL(fileName);
     M_REQUIRE_NON_NULL(openingMode);
     M_REQUIRE_NON_NULL(image);
-    /*struct imgfs_file * ptr = calloc(1, sizeof(struct imgfs_file));
-    M_REQUIRE_NON_NULL(ptr);
-    image = ptr;*/
 
+    // Opening file
     image -> file = fopen(fileName, openingMode);
     if (image -> file == NULL) {
         return ERR_IO;
     }
 
+    // Reading header
     if (fread(&image->header, sizeof(struct imgfs_header), 1, image -> file) != 1) {
-        fclose(image -> file); // file closing in case of an error
+        fclose(image -> file); 
         return ERR_IO;
     }
 
+    //Reading metadatas
     image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
-    if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files , image -> file) != (image -> header).max_files) {//todo check with assistants if lseek work perfectly in this case
-        //todo check if ok this error managing is great
-        fclose(image -> file); // file closing in case of an error
+    if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files, image -> file) != (image -> header).max_files) {
+        fclose(image -> file);
         return ERR_IO;
     }
 
     return ERR_NONE;
 }
 
-void do_close(struct imgfs_file * image) {
+void do_close(struct imgfs_file * image)
+{
     // M_REQUIRE_NON_NULL(image); returns an error code so not usable in void func
     if (image != NULL ) {
         free(image->metadata);
@@ -103,5 +106,3 @@ void do_close(struct imgfs_file * image) {
         }
     }
 }
-
-
