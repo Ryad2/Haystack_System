@@ -27,8 +27,8 @@ struct command_mapping {
 /*******************************************************************************
  * MAIN
  */
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
+    
     VIPS_INIT(argv[0]);
     int ret = 0;
 

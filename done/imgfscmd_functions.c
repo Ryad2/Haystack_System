@@ -66,7 +66,7 @@ int do_list_cmd(int argc, char** argv)
     int open_result = do_open(imgfs_file_name, "rb", &imgfs_file);
 
     if (open_result != ERR_NONE) {
-        do_close(&imgfs_file);
+        //do_close(&imgfs_file);
         return open_result;
     }
 

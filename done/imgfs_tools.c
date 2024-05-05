@@ -14,6 +14,7 @@
 #include <stdio.h>         // for sprintf
 #include <stdlib.h>        // for calloc
 #include <string.h>        // for strcmp
+#define NUM_OF_FILES 1
 
 /*******************************************************************
  * Human-readable SHA
@@ -68,8 +69,8 @@ ORIGINAL: %" PRIu32 " x %" PRIu32 "\n",
     printf("*****************************************\n");
 }
 
-int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image)
-{
+int do_open(const char* fileName, const char* openingMode, struct imgfs_file * image) {
+
     M_REQUIRE_NON_NULL(fileName);
     M_REQUIRE_NON_NULL(openingMode);
     M_REQUIRE_NON_NULL(image);
@@ -81,14 +82,16 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
     }
 
     // Reading header
-    if (fread(&image->header, sizeof(struct imgfs_header), 1, image -> file) != 1) {
+    if (fread(&image->header, sizeof(struct imgfs_header), NUM_OF_FILES, image -> file) != NUM_OF_FILES) {
         fclose(image -> file); 
         return ERR_IO;
     }
 
     //Reading metadatas
     image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
-    if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files, image -> file) != (image -> header).max_files) {
+    if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files, image -> file) 
+     != (image -> header).max_files) {
+        free(image->metadata);
         fclose(image -> file);
         return ERR_IO;
     }
@@ -100,8 +103,10 @@ void do_close(struct imgfs_file * image)
 {
     // M_REQUIRE_NON_NULL(image); returns an error code so not usable in void func
     if (image != NULL ) {
-        free(image->metadata);
-        if (image->file) {
+        if (image -> metadata != NULL){
+            free(image->metadata);
+        } 
+        if (image->file != NULL) {
             fclose(image->file);
         }
     }
