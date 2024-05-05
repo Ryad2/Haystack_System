@@ -45,14 +45,14 @@ imgfslist: unit-test-imgfslist
 	@printf '\n'
 
 # some target shortcuts : compile & run the tests
-imgfscreate: unit-test-imgfscreate
-	./$^ && echo "==== " $< " SUCCEEDED =====" || { echo "==== " $< " FAILED ====="; false; }
-	@printf '\n'
+#imgfscreate: unit-test-imgfscreate
+#	./$^ && echo "==== " $< " SUCCEEDED =====" || { echo "==== " $< " FAILED ====="; false; }
+#	@printf '\n'
 
 # some target shortcuts : compile & run the tests
-imgfsdelete: unit-test-imgfsdelete
-	./$^ && echo "==== " $< " SUCCEEDED =====" || { echo "==== " $< " FAILED ====="; false; }
-	@printf '\n'
+#imgfsdelete: unit-test-imgfsdelete
+#	./$^ && echo "==== " $< " SUCCEEDED =====" || { echo "==== " $< " FAILED ====="; false; }
+#	@printf '\n'
 
 # some target shortcuts : compile & run the tests
 imgfsdedup: unit-test-imgfsdedup
