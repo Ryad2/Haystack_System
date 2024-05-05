@@ -54,12 +54,16 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IO;
     }
 
+    //initializing the resized buffer 
+    void* resized_buffer = NULL;
+    size_t resized_length = 0;
+
+    //initializing the 
     VipsImage *in, *out;
+
     // Load the original image from the buffer
     if (vips_jpegload_buffer(image_buffer, metadata -> size[ORIG_RES], &in, NULL)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(image_buffer);
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IMGLIB;
     }
 
@@ -71,15 +75,10 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
 
     // Create a thumbnail of the image at the desired resolution
     if (vips_thumbnail_image(in, &out, target_width, "height", target_height, NULL)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(image_buffer);
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IMGLIB;
     }
 
-    //initializing the resized buffer
-    void* resized_buffer = NULL;
-    size_t resized_length = 0;
 
 
     // Saving the resized image to a buffer

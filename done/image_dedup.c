@@ -41,6 +41,7 @@ int do_name_and_content_dedup(struct imgfs_file* imgfs_file, uint32_t index) {
             } else {
                 if (!strncmp((const char *) metadata -> SHA, (const char *) current_metadata -> SHA, SHA256_DIGEST_LENGTH)) {
                     memcpy(metadata -> offset, current_metadata -> offset, NB_RES*sizeof(uint64_t));
+                    //double checking that we have exactly the same size 
                     memcpy(metadata -> size, current_metadata -> size, NB_RES*sizeof(uint64_t));
                     count++;
                 }
