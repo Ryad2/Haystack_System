@@ -28,20 +28,24 @@ static const uint16_t MAX_SMALL_RES = 512;
 int help(int useless _unused, char** useless_too _unused)
 {
     printf("imgfscmd [COMMAND] [ARGUMENTS]\n"
-           "  help: displays this help.\n"
-           "  list <imgFS_filename>: list imgFS content.\n"
-           "  create <imgFS_filename> [options]: create a new imgFS.\n"
-           "      options are:\n"
-           "          -max_files <MAX_FILES>: maximum number of files.\n"
-           "                                  default value is 128\n"
-           "                                  maximum value is 4294967295\n"
-           "          -thumb_res <X_RES> <Y_RES>: resolution for thumbnail images.\n"
-           "                                  default value is 64x64\n"
-           "                                  maximum value is 128x128\n"
-           "          -small_res <X_RES> <Y_RES>: resolution for small images.\n"
-           "                                  default value is 256x256\n"
-           "                                  maximum value is 512x512\n"
-           "  delete <imgFS_filename> <imgID>: delete image imgID from imgFS.\n"); // copied and pasted directly
+        "help: displays this help.\n"
+        "list <imgFS_filename>: list imgFS content.\n"
+        "create <imgFS_filename> [options]: create a new imgFS.\n"
+        "    options are:\n"
+        "        -max_files <MAX_FILES>: maximum number of files.\n"
+        "                                default value is 128\n"
+        "                                maximum value is 4294967295\n"
+        "        -thumb_res <X_RES> <Y_RES>: resolution for thumbnail images.\n"
+        "                                default value is 64x64\n"
+        "                                maximum value is 128x128\n"
+        "        -small_res <X_RES> <Y_RES>: resolution for small images.\n"
+        "                                default value is 256x256\n"
+        "                                maximum value is 512x512\n"
+        "read   <imgFS_filename> <imgID> [original|orig|thumbnail|thumb|small]:\n"
+        "    read an image from the imgFS and save it to a file.\n"
+        "    default resolution is \"original\".\n"
+        "insert <imgFS_filename> <imgID> <filename>: insert a new image in the imgFS.\n"
+        "delete <imgFS_filename> <imgID>: delete image imgID from imgFS.\n"); // copied and pasted directly
     fflush(stdout);
     return ERR_NONE;
 }
@@ -247,15 +251,45 @@ int do_insert_cmd(int argc, char **argv)
 
 static void create_name(const char* img_id, int resolution, char** new_name) 
 {
-    return;
+    strcpy(new_name, img_id);
+    if (resolution == THUMB_RES) {
+        strcpy(new_name, "_thumb");
+    } else if (resolution == SMALL_RES) {
+        strcpy(new_name, "_small");
+    } else {
+        strcpy(new_name, "_orig");
+    }
+    strcpy(new_name, ".jpg");
 }
 
 static int write_disk_image(const char *filename, const char *image_buffer, uint32_t image_size)
 {
-    return 0;
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) {
+        return ERR_IO;
+    }
+    if (fwrite(image_buffer, image_size, 1, file) != 1) {
+        return ERR_IO;
+    }
+    fclose(file);
+    return ERR_NONE;
 }
 
 static int read_disk_image(const char *path, char **image_buffer, uint32_t *image_size)
 {
-    return 0;
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        return ERR_IO;
+    }
+
+    // we are supposed to fill image_size but how are we supposed to know it ?
+    *image_buffer = calloc(1, image_size);
+    if (*image_buffer = NULL) {
+        return ERR_OUT_OF_MEMORY;
+    }
+    if (fread(*image_buffer, image_size, 1, file) != 1) {
+        return ERR_IO;
+    }
+    fclose(file);
+    return ERR_NONE;
 }

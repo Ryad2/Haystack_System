@@ -24,12 +24,17 @@ int do_read(const char* img_id, int resolution, char** image_buffer,
     }
 
     struct img_metadata* md = &imgfs_file->metadata[index];
+    int errcode = ERR_NONE;
 
-    if (md->offset == NULL || md->size == NULL) {
-        // TODO lazily_resize
+    if (md->offset == NULL || md->size == NULL) { // Never true for ORIG_RES
+        errcode = lazily_resize(resolution, imgfs_file, index);
     }
 
-    // TODO fread to buffer and size + check errors
+    if (errcode != ERR_NONE) {
+        return errcode;
+    }
+
+    // TODO buffer and size ? + check errors
 
     return ERR_NONE;
 }

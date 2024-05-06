@@ -89,12 +89,8 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
 
     //Reading metadatas
     image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
-<<<<<<< HEAD
-    if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files, image -> file) != (image -> header).max_files) {
-=======
     if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files, image -> file) 
      != (image -> header).max_files) {
->>>>>>> 068ac8d7d27d5ade2bcbf2bab150d3955327c11a
         free(image->metadata);
         fclose(image -> file);
         return ERR_IO;

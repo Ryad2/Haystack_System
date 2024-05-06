@@ -32,7 +32,7 @@ int do_insert(const char* image_buffer, size_t image_size,
 
     SHA256(image_buffer, image_size, md->SHA);
     strcpy(md->img_id, img_id);
-    md->size[ORIG_RES] = image_size;
+    md->size[ORIG_RES] = (uint32_t) image_size;
 
     uint32_t* height, width;
     int errcode = get_resolution(height, width, image_buffer, image_size);
