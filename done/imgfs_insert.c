@@ -51,6 +51,20 @@ int do_insert(const char* image_buffer, size_t image_size,
     if (md->offset == 0) {
         // no duplicate, so we need to write to disk
         // TODO
+
+        int metadata_file_pointer = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);
+
+        // moving the file pointer to the metadata of the image
+        if (fseek(imgfs_file->file, metadata_file_pointer, SEEK_SET)) {
+            //todo u have to clean_up
+            return ERR_IO;  // File seek error
+        }
+
+        // writing the metadata of the image to the file
+        if(fwrite(md, sizeof(struct img_metadata), 1, imgfs_file -> file) != 1) {
+            //todo u have to clean_up
+            return ERR_IO;
+        }
     }
 
     imgfs_file->header.nb_files += 1;
