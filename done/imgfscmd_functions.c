@@ -53,10 +53,8 @@ int do_list_cmd(int argc, char** argv)
 {
 
     if (argc == 0) {
-        printf("Usage: no file name\n");
         return ERR_INVALID_ARGUMENT;
     } else if (argc > 1) {
-        printf("Usage: too many arguments\n");
         return ERR_INVALID_COMMAND;
     }
 
@@ -66,7 +64,6 @@ int do_list_cmd(int argc, char** argv)
     int open_result = do_open(imgfs_file_name, "rb", &imgfs_file);
 
     if (open_result != ERR_NONE) {
-        do_close(&imgfs_file);
         return open_result;
     }
 
@@ -184,4 +181,81 @@ int do_delete_cmd(int argc, char** argv)
 
     do_close(&imgfs_file);
     return lastErr;
+}
+
+// ======================================================================
+int do_read_cmd(int argc, char **argv)
+{
+    M_REQUIRE_NON_NULL(argv);
+    if (argc != 2 && argc != 3) return ERR_NOT_ENOUGH_ARGUMENTS;
+
+    const char * const img_id = argv[1];
+
+    const int resolution = (argc == 3) ? resolution_atoi(argv[2]) : ORIG_RES;
+    if (resolution == -1) return ERR_RESOLUTIONS;
+
+    struct imgfs_file myfile;
+    zero_init_var(myfile);
+    int error = do_open(argv[0], "rb+", &myfile);
+    if (error != ERR_NONE) return error;
+
+    char *image_buffer = NULL;
+    uint32_t image_size = 0;
+    error = do_read(img_id, resolution, &image_buffer, &image_size, &myfile);
+    do_close(&myfile);
+    if (error != ERR_NONE) {
+        return error;
+    }
+
+    // Extracting to a separate image file.
+    char* tmp_name = NULL;
+    create_name(img_id, resolution, &tmp_name);
+    if (tmp_name == NULL) return ERR_OUT_OF_MEMORY;
+    error = write_disk_image(tmp_name, image_buffer, image_size);
+    free(tmp_name);
+    free(image_buffer);
+
+    return error;
+}
+
+// ======================================================================
+int do_insert_cmd(int argc, char **argv)
+{
+    M_REQUIRE_NON_NULL(argv);
+    if (argc != 3) return ERR_NOT_ENOUGH_ARGUMENTS;
+
+    struct imgfs_file myfile;
+    zero_init_var(myfile);
+    int error = do_open(argv[0], "rb+", &myfile);
+    if (error != ERR_NONE) return error;
+
+    char *image_buffer = NULL;
+    uint32_t image_size;
+
+    // Reads image from the disk.
+    error = read_disk_image (argv[2], &image_buffer, &image_size);
+    if (error != ERR_NONE) {
+        do_close(&myfile);
+        return error;
+    }
+
+    error = do_insert(image_buffer, image_size, argv[1], &myfile);
+    free(image_buffer);
+    do_close(&myfile);
+    return error;
+}
+
+static void create_name(const char* img_id, int resolution, char** new_name) 
+{
+    return;
+}
+
+static int write_disk_image(const char *filename, const char *image_buffer, uint32_t image_size)
+{
+    return 0;
+}
+
+static int read_disk_image(const char *path, char **image_buffer, uint32_t *image_size)
+{
+    return 0;
 }

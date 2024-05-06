@@ -89,6 +89,7 @@ int do_open(const char* fileName, const char* openingMode, struct imgfs_file * i
     //Reading metadatas
     image -> metadata = calloc((image -> header).max_files, sizeof(struct img_metadata));
     if (fread(image->metadata, sizeof(struct img_metadata), (image -> header).max_files, image -> file) != (image -> header).max_files) {
+        free(image->metadata);
         fclose(image -> file);
         return ERR_IO;
     }
@@ -105,4 +106,19 @@ void do_close(struct imgfs_file * image)
             fclose(image->file);
         }
     }
+}
+
+// ======================================================================
+int resolution_atoi (const char* str)
+{
+    if (str == NULL) return -1;
+
+    if (!strcmp(str, "thumb") || !strcmp(str, "thumbnail")) {
+        return THUMB_RES;
+    } else if (!strcmp(str, "small")) {
+        return SMALL_RES;
+    } else if (!strcmp(str, "orig")  || !strcmp(str, "original")) {
+        return ORIG_RES;
+    }
+    return -1;
 }
