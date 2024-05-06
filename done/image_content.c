@@ -5,11 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#define NUM_IMGS 1
 
 
 
-int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index)
-{
+
+void clean_up(VipsImage *in, VipsImage *out, void* resized_buffer, void* image_buffer) {
+        g_object_unref(in);
+        g_object_unref(out);
+        free(resized_buffer);
+        free(image_buffer);
+} 
+
+int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
 
     M_REQUIRE_NON_NULL(imgfs_file);
     M_REQUIRE_NON_NULL(imgfs_file->file);
@@ -40,18 +48,22 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index)
         return ERR_IO;  // File seek error
     }
 
-    size_t read = fread(image_buffer, metadata->size[ORIG_RES], 1, imgfs_file->file);
-    if( read != 1 ) {
+    // Read the original image from the file
+    if(fread(image_buffer, metadata->size[ORIG_RES], NUM_IMGS, imgfs_file->file) != NUM_IMGS ) {
         free(image_buffer);
         return ERR_IO;
     }
 
+    //initializing the resized buffer 
+    void* resized_buffer = NULL;
+    size_t resized_length = 0;
+
+    //initializing the 
     VipsImage *in, *out;
 
+    // Load the original image from the buffer
     if (vips_jpegload_buffer(image_buffer, metadata -> size[ORIG_RES], &in, NULL)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(image_buffer);
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IMGLIB;
     }
 
@@ -63,64 +75,52 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index)
 
     // Create a thumbnail of the image at the desired resolution
     if (vips_thumbnail_image(in, &out, target_width, "height", target_height, NULL)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(image_buffer);
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IMGLIB;
     }
+
+
 
     // Saving the resized image to a buffer
-    void* resized_buffer = NULL;
-    size_t resized_length = 0;
-
     if (vips_jpegsave_buffer(out, &resized_buffer, &resized_length, NULL)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(resized_buffer);
-        free(image_buffer);
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IMGLIB;
     }
 
+    // initializing the position of the file pointer to the end of the file
     if (fseek(imgfs_file->file, 0, SEEK_END)) {
-        free(image_buffer);
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IO;  // File seek error
     }
 
+    // updating the metadata of the image
     metadata -> offset[resolution] = ftell(imgfs_file -> file);
     metadata -> size[resolution]   = resized_length;
 
-
-    if(!fwrite(resized_buffer, resized_length, 1, imgfs_file -> file)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(resized_buffer);
-        free(image_buffer);
+    // Write the resized image to the file
+    if(fwrite(resized_buffer, resized_length, NUM_IMGS, imgfs_file -> file) != NUM_IMGS) {
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IO;
-
     }
 
-    int metadata_offset = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);
-    if (fseek(imgfs_file->file, metadata_offset, SEEK_SET)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(resized_buffer);
-        free(image_buffer);
+    // fiding the position of the metadata of the image in the file
+    int metadata_file_pointer = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);
+
+    // moving the file pointer to the metadata of the image
+    if (fseek(imgfs_file->file, metadata_file_pointer, SEEK_SET)) {
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IO;  // File seek error
     }
 
-    if(!fwrite(metadata, sizeof(struct img_metadata), 1, imgfs_file -> file)) {
-        g_object_unref(in);
-        g_object_unref(out);
-        free(resized_buffer);
-        free(image_buffer);
+    // writing the metadata of the image to the file
+    if(fwrite(metadata, sizeof(struct img_metadata), NUM_IMGS, imgfs_file -> file) != NUM_IMGS) {
+        clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IO;
     }
 
     // Clean up
-    g_object_unref(in);
-    g_object_unref(out);
-    free(resized_buffer);
-    free(image_buffer);
+    clean_up(in, out, resized_buffer, image_buffer);
+
     return ERR_NONE;
 }
 
