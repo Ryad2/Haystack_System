@@ -1,9 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <socket_layer.h>
+#include "socket_layer.h"
 #include <sys/types.h>      // Needed for using various data types and structs
 #include <sys/socket.h>     // Needed for socket functions
+#include "error.h"
+#include <netinet/in.h>
+
 
 
 
@@ -16,7 +19,7 @@ int tcp_server_init(uint16_t port) {
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(port);
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);  //todo just browsing Listen on all interfaces
+    server_address.sin_addr.s_addr = htonl(INADDR_ANY);  //todo just browsing Listen on all interfaces
 
     if (bind(socketID, (struct sockaddr *) &server_address, sizeof(server_address)) == -1) {
         perror("fail in binding");
@@ -41,7 +44,7 @@ int tcp_accept(int passive_socket) {
     return active_socket;
 }
 
-int tcp_read(int active_socket, char* buf, size_t buflen) {
+ssize_t tcp_read(int active_socket, char* buf, size_t buflen) {
     if (active_socket == -1) {
         return ERR_INVALID_ARGUMENT;
     }
@@ -60,7 +63,7 @@ int tcp_read(int active_socket, char* buf, size_t buflen) {
     return bytes_read;
 }
 
-int tcp_send(int active_socket, const char* response, size_t response_len) {
+ssize_t tcp_send(int active_socket, const char* response, size_t response_len) {
     if (active_socket == -1) {
         return ERR_INVALID_ARGUMENT;
     }
