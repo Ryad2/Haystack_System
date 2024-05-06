@@ -40,8 +40,8 @@ int do_insert(const char* image_buffer, size_t image_size,
         return errcode;
     }
     
-    md->orig_res[0] = height;
-    md->orig_res[1] = width;
+    md->orig_res[0] = height; // TODO t'es sur que tu veux donner des pointeurs ?
+    md->orig_res[1] = width;//TODO t'es sur que tu veux donner des pointeurs ?
 
     errcode = do_name_and_content_dedup(imgfs_file, index);
     if (errcode != ERR_NONE) {
@@ -57,6 +57,40 @@ int do_insert(const char* image_buffer, size_t image_size,
     imgfs_file->header.version += 1;
 
     // TODO write updated header and metadata to disk
+
+    // fiding the position of the metadata of the image in the file
+    int metadata_file_pointer = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);
+    int header_file_pointer = sizeof(struct imgfs_header);
+
+    // moving the file pointer to the metadata of the image
+    if (fseek(imgfs_file->file, metadata_file_pointer, SEEK_SET)) {
+       //todo u have to clean_up
+        return ERR_IO;  // File seek error
+    }
+
+    // writing the metadata of the image to the file
+    if(fwrite(md, sizeof(struct img_metadata), 1, imgfs_file -> file) != 1) {
+        //todo u have to clean_up
+        return ERR_IO;
+    }
+
+
+    //todo j'ai l'impression que le header est deja ecrit dans le fichier à verifier
+
+    // moving the file pointer to the end of the header of the image
+    if (fseek(imgfs_file->file, header_file_pointer, SEEK_SET)) {
+        //todo u have to clean_up
+        return ERR_IO;  // File seek error
+    }
+
+    // writing the header of the image to the file
+    if(fwrite(imgfs_file->header, sizeof(struct img_metadata), 1, imgfs_file -> file) != 1) {
+        //todo u have to clean_up
+        return ERR_IO;
+    }
+
+
+
 
     return ERR_NONE;
 }

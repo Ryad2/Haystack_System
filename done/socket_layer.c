@@ -37,7 +37,7 @@ int tcp_server_init(uint16_t port) {
 
 int tcp_accept(int passive_socket) {
     int active_socket = accept(passive_socket, NULL, NULL);
-    if (active_socket == -1) {
+    if (active_socket < 0) {
         perror("fail in accepting");
         return ERR_IO;
     }
@@ -45,13 +45,13 @@ int tcp_accept(int passive_socket) {
 }
 
 ssize_t tcp_read(int active_socket, char* buf, size_t buflen) {
-    if (active_socket == -1) {
+    if (active_socket < 0) {
         return ERR_INVALID_ARGUMENT;
     }
     if(buf == NULL) {
         return ERR_INVALID_ARGUMENT;
     }
-    if(buflen == 0) {
+    if(buflen <= 0) {
         return ERR_INVALID_ARGUMENT;
     }
 
@@ -64,16 +64,15 @@ ssize_t tcp_read(int active_socket, char* buf, size_t buflen) {
 }
 
 ssize_t tcp_send(int active_socket, const char* response, size_t response_len) {
-    if (active_socket == -1) {
+    if (active_socket < 0) {
         return ERR_INVALID_ARGUMENT;
     }
     if(response == NULL) {
         return ERR_INVALID_ARGUMENT;
     }
-    if(response_len == 0) {
+    if(response_len <= 0) {
         return ERR_INVALID_ARGUMENT;
     }
-
     ssize_t bytes_sent = send(active_socket, response, response_len, 0);
     if (bytes_sent == -1) {
         perror("fail in sending");
