@@ -37,13 +37,15 @@ int main(int argc, char* argv[]) {
     } else {
         argc--; argv++; // skips ./
 
-        int comm_qte = 4;
+        int comm_qte = 6;
         command chosen_comm = NULL;
         struct command_mapping commands[] = {
             {"list", do_list_cmd},
             {"create", do_create_cmd},
             {"help", help},
-            {"delete", do_delete_cmd}
+            {"delete", do_delete_cmd},
+            {"read", do_read_cmd},
+            {"insert", do_insert_cmd}
         };
 
         for(int i = 0; i < comm_qte; ++i) {

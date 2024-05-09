@@ -251,15 +251,20 @@ int do_insert_cmd(int argc, char **argv)
 
 static void create_name(const char* img_id, int resolution, char** new_name) 
 {
-    strcpy(new_name, img_id);
-    if (resolution == THUMB_RES) {
-        strcpy(new_name, "_thumb");
-    } else if (resolution == SMALL_RES) {
-        strcpy(new_name, "_small");
-    } else {
-        strcpy(new_name, "_orig");
+    *new_name = calloc(1, MAX_IMG_ID + 6 + 4);
+    if (*new_name == NULL) {
+        return;
     }
-    strcpy(new_name, ".jpg");
+
+    strcat(*new_name, img_id);
+    if (resolution == THUMB_RES) {
+        strcat(*new_name, "_thumb");
+    } else if (resolution == SMALL_RES) {
+        strcat(*new_name, "_small");
+    } else {
+        strcat(*new_name, "_orig");
+    }
+    strcat(*new_name, ".jpg");
 }
 
 static int write_disk_image(const char *filename, const char *image_buffer, uint32_t image_size)
@@ -269,6 +274,7 @@ static int write_disk_image(const char *filename, const char *image_buffer, uint
         return ERR_IO;
     }
     if (fwrite(image_buffer, image_size, 1, file) != 1) {
+        fclose(file);
         return ERR_IO;
     }
     fclose(file);
@@ -282,14 +288,26 @@ static int read_disk_image(const char *path, char **image_buffer, uint32_t *imag
         return ERR_IO;
     }
 
-    // we are supposed to fill image_size but how are we supposed to know it ?
-    *image_buffer = calloc(1, image_size);
-    if (*image_buffer = NULL) {
-        return ERR_OUT_OF_MEMORY;
-    }
-    if (fread(*image_buffer, image_size, 1, file) != 1) {
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    if (size < 0) {
+        fclose(file);
         return ERR_IO;
     }
+    fseek(file, 0, SEEK_SET);
+    
+    *image_buffer = malloc((unsigned) size);
+    if (*image_buffer == NULL) {
+        fclose(file);
+        return ERR_OUT_OF_MEMORY;
+    }
+
+    if (fread(*image_buffer, (unsigned) size, 1, file) != 1) {
+        fclose(file);
+        return ERR_IO;
+    }
+
+    *image_size = (uint32_t) size;
     fclose(file);
     return ERR_NONE;
 }

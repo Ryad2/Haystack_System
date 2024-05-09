@@ -34,21 +34,22 @@ int do_insert(const char* image_buffer, size_t image_size,
     strcpy(md->img_id, img_id);
     md->size[ORIG_RES] = (uint32_t) image_size;
 
-    uint32_t* height, width;
+    uint32_t *height, *width;
     int errcode = get_resolution(height, width, image_buffer, image_size);
     if (errcode != ERR_NONE) {
         return errcode;
     }
     
-    md->orig_res[0] = height; // TODO t'es sur que tu veux donner des pointeurs ?
-    md->orig_res[1] = width;//TODO t'es sur que tu veux donner des pointeurs ?
+    md->orig_res[0] = *height;
+    md->orig_res[1] = *width;
+    md->is_valid = NON_EMPTY;
 
     errcode = do_name_and_content_dedup(imgfs_file, index);
     if (errcode != ERR_NONE) {
         return errcode;
     }
 
-    if (md->offset == 0) {
+    if (md->offset[ORIG_RES] == 0) {
         // no duplicate, so we need to write to disk
         // TODO
 
@@ -98,7 +99,7 @@ int do_insert(const char* image_buffer, size_t image_size,
     }
 
     // writing the header of the image to the file
-    if(fwrite(imgfs_file->header, sizeof(struct img_metadata), 1, imgfs_file -> file) != 1) {
+    if(fwrite(&imgfs_file->header, sizeof(struct imgfs_header), 1, imgfs_file -> file) != 1) {
         //todo u have to clean_up
         return ERR_IO;
     }

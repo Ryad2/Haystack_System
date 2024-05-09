@@ -26,8 +26,8 @@ int do_read(const char* img_id, int resolution, char** image_buffer,
     struct img_metadata* md = &imgfs_file->metadata[index];
     int errcode = ERR_NONE;
 
-    if (md->offset == NULL || md->size == NULL) { // Never true for ORIG_RES
-        errcode = lazily_resize(resolution, imgfs_file, index);
+    if (resolution != ORIG_RES && (md->offset[resolution] == 0 || md->size[resolution] == 0)) {
+        errcode = lazily_resize(resolution, imgfs_file, (size_t) index);
     }
 
     if (errcode != ERR_NONE) {
@@ -35,6 +35,19 @@ int do_read(const char* img_id, int resolution, char** image_buffer,
     }
 
     // TODO buffer and size ? + check errors
+    *image_size = md->size[resolution];
+    *image_buffer = malloc(md->size[resolution]);
+    if (image_buffer == NULL) {
+        return ERR_OUT_OF_MEMORY;
+    }
+    
+    if (imgfs_file->file == NULL || 
+        fseek(imgfs_file->file, md->offset[resolution], SEEK_SET) || 
+        fwrite(*image_buffer, md->size[resolution], 1, imgfs_file->file) != 1) {
+
+        return ERR_IO;
+    }
+
 
     return ERR_NONE;
 }

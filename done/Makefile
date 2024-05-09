@@ -16,6 +16,12 @@ TEST_DIR = $(PWD)/../provided/tests
 ## You can change the tag to run week07, week08, etc.
 IMAGE := chappeli/cs202-feedback:latest
 
+# Add options for the compiler to include the library's headers
+CFLAGS += $(shell pkg-config vips --cflags)
+
+# Add the library to the linker
+LDLIBS += $(shell pkg-config vips --libs)
+
 #########################################################################
 # DO NOT EDIT BELOW THIS LINE
 #
@@ -143,6 +149,8 @@ endef
 end2end-tests: $(TARGETS)
 	$(call e2e_test,week07.robot)
 	$(call e2e_test,week08.robot)
+	$(call e2e_test,week10.robot)
+
 check: end2end-tests unit-tests
 
 ## --------------------------------------------------
