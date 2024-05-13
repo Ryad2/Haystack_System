@@ -44,14 +44,21 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
     M_REQUIRE_NON_NULL(name);
     M_REQUIRE_NON_NULL(out);
 
+
+     char* args_begin = strstr(url->val, "?"); //to check the beginning of the arguments
+    if (args_begin == NULL) {
+        return ERR_INVALID_ARGUMENT;
+    }
+
     char* name_cpy = calloc(strlen(name) + 2, sizeof(char));
     if (name_cpy == NULL) {
-        return ERR_IO;
+        return ERR_IO;//todo check if this is the right error
     }
+
     strcpy(name_cpy, name);
     strcat(name_cpy, "=");
 
-    char* start = strstr(url->val, name_cpy);
+    char* start = strstr(args_begin, name_cpy);
     if (start == NULL) {
         free(name_cpy);
         return 0;
@@ -61,9 +68,10 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
     if (end == NULL) {
         end = url->val + url->len;
     }
-    size_t arg_length = end - start + strlen(name_cpy);
+    start += strlen(name_cpy);
+    size_t arg_length = end - start;
 
-    if (arg_length > out_len) {
+    if (arg_length > out_len || arg_length <= 0) {//todo check if this should not be >= in case we have dont have to add a null terminator
         free(name_cpy);
         return ERR_RUNTIME;
     }
