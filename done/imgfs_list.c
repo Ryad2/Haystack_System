@@ -23,4 +23,6 @@ int do_list(const struct imgfs_file* imgfs_file, enum do_list_mode output_mode, 
     } else if (output_mode == JSON) {
         TO_BE_IMPLEMENTED();
     }
+    
+    return ERR_NONE;
 }
