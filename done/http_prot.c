@@ -76,7 +76,7 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
         return ERR_RUNTIME;
     }
     char arg[arg_length + 1];
-    memcpy(arg, start + strlen(name_cpy), arg_length);
+    memcpy(arg, start, arg_length);
 
     arg[arg_length] = '\0';
     memcpy(out, arg, arg_length + 1);
