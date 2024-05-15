@@ -85,7 +85,9 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
     return arg_length;
 }
 
-static const char* get_next_token(const char* message, const char* delimiter, struct http_string* output){
+static const char* get_next_token(const char* message,
+                                  const char* delimiter,
+                                  struct http_string* output){
     // find the position of the delimiter
     const char* end_token = strstr(message, delimiter);
     if (end_token == NULL) {
@@ -101,8 +103,53 @@ static const char* get_next_token(const char* message, const char* delimiter, st
     return end_token + strlen(delimiter);
 }
 
+static const char* http_parse_headers(const char* header_start,
+                                      struct http_message* output) {
 
-int http_parse_message(const char *stream, size_t bytes_received, struct http_message *out, int *content_len) {
+    const char* current = get_next_token(header_start,
+                                         HTTP_LINE_DELIM,
+                                          NULL);
+    struct http_string line;
+
+    output -> num_headers = 0;
+
+    while ((current = get_next_token(current, HTTP_HDR_KV_DELIM, &line)))
+    {//todo didn't use HTTP_HDR_END_DELIM for the end of the headers hope that way works
+        if(line.len <= 0) break;
+
+        struct http_header current_header;
+        current_header.key = line;
+
+        if (!(current = get_next_token(current, HTTP_LINE_DELIM, &line))) {
+            return NULL;
+        }//todo useless check but why not
+
+        current_header.value = line;
+
+        output -> num_headers++;
+
+        if (output -> num_headers >= MAX_HEADERS ) {
+            return NULL; //todo not doing any error just stoping looking for headers
+        }
+
+        output -> headers[output -> num_headers] = current_header;
+
+    }
+
+    return current; // Retourne la position après les en-têtes
+}
+
+
+
+
+
+
+
+int http_parse_message(const char *stream,
+                       size_t bytes_received,
+                       struct http_message *out,
+                       int *content_len) {
+
     M_REQUIRE_NON_NULL(stream);
     M_REQUIRE_NON_NULL(out);
     M_REQUIRE_NON_NULL(content_len);
@@ -111,6 +158,23 @@ int http_parse_message(const char *stream, size_t bytes_received, struct http_me
         return ERR_INVALID_ARGUMENT;//todo check if this is the right error
     }
 
+}
 
 
+int main() {
+    const char* headers = "Host: localhost:8000\r\nUser-Agent: curl/8.5.0\r\nAccept: */*\r\n\r\n";
+    struct http_message message;
+
+    const char* body_start = http_parse_headers(headers, &message);
+    if (body_start) {
+        for (size_t i = 0; i < message.header_count; i++) {
+            printf("Header %zu:\n", i);
+            printf("  Key: %.*s\n", (int)message.headers[i].key.len, message.headers[i].key.val);
+            printf("  Value: %.*s\n", (int)message.headers[i].value.len, message.headers[i].value.val);
+        }
+    } else {
+        printf("Error parsing headers.\n");
+    }
+
+    return 0;
 }
