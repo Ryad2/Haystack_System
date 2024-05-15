@@ -85,6 +85,22 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
     return arg_length;
 }
 
+static const char* get_next_token(const char* message, const char* delimiter, struct http_string* output){
+    // find the position of the delimiter
+    const char* end_token = strstr(message, delimiter);
+    if (end_token == NULL) {
+        // if not found return 
+        return NULL;//todo check if correct return
+    }
+    
+    if (output != NULL) {
+        output->val = message;          // pointer to the beginning of the token
+        output->len = end_token - message;    // length of the substring
+    }
+    // point just after the delimiter
+    return end_token + strlen(delimiter);
+}
+
 
 int http_parse_message(const char *stream, size_t bytes_received, struct http_message *out, int *content_len) {
     M_REQUIRE_NON_NULL(stream);
@@ -94,4 +110,7 @@ int http_parse_message(const char *stream, size_t bytes_received, struct http_me
     if(bytes_received == 0){
         return ERR_INVALID_ARGUMENT;//todo check if this is the right error
     }
+
+
+
 }
