@@ -38,12 +38,71 @@ static void *handle_connection(void *arg)
         return &our_ERR_INVALID_ARGUMENT;
     }
 
+
+    int *active_socket = (int *) arg;
+    char *buffer = calloc(1, MAX_HEADER_SIZE + 1);  // Allocate buffer
+    if (buffer == NULL) {
+        return &our_ERR_OUT_OF_MEMORY;
+    }
+
+    int bytes_received = 0;
+    int content_len = 0;
+    struct http_message msg;
+    memset(&msg, 0, sizeof(msg));
+
+    while (1) {
+        int n = tcp_read(*active_socket, buffer + bytes_received, MAX_HEADER_SIZE - bytes_received);
+        if (n <= 0) {
+            free(buffer);
+            return &our_ERR_IO;
+        }
+
+        bytes_received += n;
+        buffer[bytes_received] = '\0';
+
+        // Try to parse the message
+        int parse_result = http_parse_message(buffer, bytes_received, &msg, &content_len);
+        if (parse_result < 0) {
+            free(buffer);
+            return &parse_result;//todo returning a pointer to an int that been declared in the same function
+        }
+
+        if (parse_result == 1) {
+            // Full message has been parsed
+            break;
+        }
+
+        // If message is incomplete, continue reading
+        if (bytes_received >= MAX_HEADER_SIZE) {
+            free(buffer);
+            return &our_ERR_INVALID_ARGUMENT;
+        }
+    }
+
+    // Call the HTTP message handler
+    int handler_result = handle_http_message(&msg, *active_socket);
+    if (handler_result != ERR_NONE) {
+        free(buffer);
+        return &handler_result;//todo returning a pointer to an int that been declared in the same function
+    }
+
+    free(buffer);
+    return &our_ERR_NONE;
+
+
+
+
+
+
+
+    //  PREVIOUS CODE
+    /*
     int* active_socket = (int*) arg;
     const char* testOk = "test: ok";
     char* endPtr = NULL;
     int hasSeenTestOk = 0;
 
-    char* buffer = calloc(1, MAX_HEADER_SIZE);
+    char* buffer = calloc(1, MAX_HEADER_SIZE + 1);
     if (buffer == NULL) {
         return &our_ERR_OUT_OF_MEMORY;
     }
@@ -57,12 +116,15 @@ static void *handle_connection(void *arg)
         }
     }
 
+
+
     // TODO "handle error cases" I don't know what else can happen yet
     if (http_reply(*active_socket, hasSeenTestOk ? HTTP_OK : HTTP_BAD_REQUEST, NULL, NULL, 0)) {
         return &our_ERR_IO;
     }
     
     return &our_ERR_NONE;
+    */
 }
 
 
