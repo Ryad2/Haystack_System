@@ -95,11 +95,49 @@ static const char* get_next_token(const char* message, const char* delimiter, st
     
     if (output != NULL) {
         output->val = message;          // pointer to the beginning of the token
-        output->len = end_token - message;    // length of the substring
+        output->len = (end_token - message) / (sizeof(char));    // todo length of the substring in bytes (check if should be in bytes)
     }
     // point just after the delimiter
     return end_token + strlen(delimiter);
 }
+
+static const char* http_parse_headers(const char* header_start, struct http_message* output) {
+
+    const char* current = header_start;
+    if (current == NULL) {
+        return NULL; // todo should return an error but no error in char* type
+    }
+    struct http_string line;
+
+    output->num_headers = 0;
+
+    while ((current = get_next_token(current, HTTP_LINE_DELIM, &line)) && line.len > 0) { // I consider the HTTP_HDR_END_DELIM is just twice the HTTP_LINE_DELIM
+        struct http_string key, value;
+        const char* colon_pos = strstr(line.val, HTTP_HDR_KV_DELIM);
+
+        if (colon_pos == NULL) {
+            return NULL; // todo should return an error but no error in char* type
+        }
+
+        key.val = line.val;
+        key.len = (colon_pos - line.val) / (sizeof(char));
+
+        value.val = colon_pos + strlen(HTTP_HDR_KV_DELIM);
+        value.len = line.len - (key.len + strlen(HTTP_HDR_KV_DELIM));
+
+        output->headers[output->num_headers].key = key;
+        output->headers[output->num_headers].value = value;
+        output->num_headers++;
+
+        if (output->num_headers >= MAX_HEADERS) {
+            return NULL; // todo too many headers error 
+        }
+    }
+
+
+    return current;
+}
+
 
 
 int http_parse_message(const char *stream, size_t bytes_received, struct http_message *out, int *content_len) {
@@ -111,6 +149,72 @@ int http_parse_message(const char *stream, size_t bytes_received, struct http_me
         return ERR_INVALID_ARGUMENT;//todo check if this is the right error
     }
 
+    if(strstr(stream, HTTP_HDR_END_DELIM) == NULL){ //todo check if the stream contain HTTP_HDR_END_DELIM on all the bytes received(is not limited on the bytes received) solve that
+        return 0;
+    }
+
+    char *current_pos = stream;
+    const char *headers_end;
+    struct http_string token;
+
+    current_pos = get_next_token(current_pos, " ", &out->method);
+    if (current_pos == NULL) {
+        return ERR_INVALID_ARGUMENT;  //Parsing Error
+    }
+
+    // Parsing the URI and checking if it is valid
+    current_pos = get_next_token(current_pos, " ", &out->uri);
+    if (current_pos == NULL) {
+        return ERR_INVALID_ARGUMENT;  //Parsing Error
+    }
+
+    current_pos = get_next_token(current_pos, HTTP_LINE_DELIM, &token);
+    if (current_pos == NULL || strncmp(token.val, "HTTP/1.1", token.len) != 0) {
+        return ERR_INVALID_ARGUMENT;  // Erreur de parsing
+    }
+
+    //parsing all the headers and storing them in the out struct
+    current_pos = http_parse_headers(current_pos, out);
+    if (current_pos == NULL) {
+        return ERR_INVALID_ARGUMENT;  // Erreur de parsing des en-têtes
+    }
 
 
+
+    *content_len = 0;
+    for (size_t i = 0; i < out->num_headers; i++) {
+        struct http_header *header = &out->headers[i];
+        if (strncmp(header->key.val, "Content-Length", header->key.len) == 0 &&
+            header->key.len == strlen("Content-Length")) {//looking for the argument Content-Length in the headers
+            char content_len_str[header->value.len + 1];
+            memcpy(content_len_str, header->value.val, header->value.len);//copying the value of the header in a string
+            content_len_str[header->value.len] = '\0';
+            *content_len = atoi(content_len_str);//converting the string to an int
+            break;
+        }
+    }
+    // Parsing the body
+    if (*content_len > 0) {
+        size_t headers_size = headers_end + strlen(HTTP_HDR_END_DELIM) - stream;
+        if (bytes_received < headers_size + *content_len) {
+            return 0;  // uncompete body 
+        }
+        out->body.val = headers_end + strlen(HTTP_HDR_END_DELIM);
+        out->body.len = *content_len;
+    } else {
+        // no body or empty body
+        out->body.val = NULL;
+        out->body.len = 0;
+    }
+
+    return 1;  // full message have been parsed
 }
+
+
+
+
+
+
+
+
+
