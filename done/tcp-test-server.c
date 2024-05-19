@@ -1,6 +1,8 @@
 #include "error.h"
 #include "socket_layer.h"
 #include "string.h"
+#include "util.h"
+#include "sys/socket.h"
 
 const int MAX_ANSWER_LENGTH = 2048 + 5;
 const char *const end = "<EOF>";
@@ -16,38 +18,43 @@ int main(int argc, char* argv[]) {
         argc--; argv++; // skips ./
 
         // init
-        int socket = (int) argv[0];
-        tcp_server_init(socket);
+        int passive_socket = tcp_server_init(atouint16(argv[0]));
+        printf("socket : %d\n", passive_socket);
 
         while(1) {
-
-            // not sure how to initiate conversation
-            tcp_accept(socket);
-
+            listen(passive_socket, 1);
+            int socket = tcp_accept(passive_socket);
 
             // receive file length
             const char initMess[MAX_ANSWER_LENGTH + 1] = {0};
             tcp_read(socket, initMess, MAX_ANSWER_LENGTH);
+            printf("received %s\n", initMess);
+            fflush(stdout);
             int length = atoi(initMess);
 
             // send ACK
             const char fileAckMess[MAX_ANSWER_LENGTH + 1] = {0};
             strcat(fileAckMess, (length >= 1024) ? bigFileAck : smallFileAck);
             strcat(fileAckMess, end);
+            printf("sending %s\n", fileAckMess);
+            fflush(stdout);
             tcp_send(socket, fileAckMess, MAX_ANSWER_LENGTH);
-            if (length >= 1024) continue;
+            if (length < 1024) {
 
-
-            // get file
-            const char fileMess[MAX_ANSWER_LENGTH + 1] = {0};
-            tcp_read(socket, fileMess, MAX_ANSWER_LENGTH);
-            printf("%.*s\n", length, fileMess);
-
-            
-            // end ACK
-            const char lastMess[MAX_ANSWER_LENGTH + 1] = {0};
-            strcat(lastMess, end);
-            tcp_send(socket, fileMess, MAX_ANSWER_LENGTH);
+                // get file
+                const char fileMess[MAX_ANSWER_LENGTH + 1] = {0};
+                tcp_read(socket, fileMess, MAX_ANSWER_LENGTH);
+                printf("received \"%s\"\n", fileMess);
+                fflush(stdout);
+                
+                // end ACK
+                const char lastMess[MAX_ANSWER_LENGTH + 1] = {0};
+                strcat(lastMess, ack);
+                strcat(lastMess, end);
+                printf("sending %s\n", lastMess);
+                fflush(stdout);
+                tcp_send(socket, fileMess, MAX_ANSWER_LENGTH);
+            }
 
         }
     }

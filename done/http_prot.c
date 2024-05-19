@@ -85,7 +85,9 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
     return arg_length;
 }
 
-static const char* get_next_token(const char* message, const char* delimiter, struct http_string* output){
+static const char* get_next_token(const char* message,
+                                  const char* delimiter,
+                                  struct http_string* output){
     // find the position of the delimiter
     const char* end_token = strstr(message, delimiter);
     if (end_token == NULL) {
@@ -101,46 +103,54 @@ static const char* get_next_token(const char* message, const char* delimiter, st
     return end_token + strlen(delimiter);
 }
 
-static const char* http_parse_headers(const char* header_start, struct http_message* output) {
+static const char* http_parse_headers(const char* header_start,
+                                      struct http_message* output) {
 
-    const char* current = header_start;
-    if (current == NULL) {
-        return NULL; // todo should return an error but no error in char* type
-    }
+    const char* current = get_next_token(header_start,
+                                         HTTP_LINE_DELIM,
+                                          NULL);
     struct http_string line;
 
-    output->num_headers = 0;
+    output -> num_headers = 0;
+    int count = 0;
 
-    while ((current = get_next_token(current, HTTP_LINE_DELIM, &line)) && line.len > 0) { // I consider the HTTP_HDR_END_DELIM is just twice the HTTP_LINE_DELIM
-        struct http_string key, value;
-        const char* colon_pos = strstr(line.val, HTTP_HDR_KV_DELIM);
+    while ((current = get_next_token(current, HTTP_HDR_KV_DELIM, &line)) != NULL)
+    {//todo didn't use HTTP_HDR_END_DELIM for the end of the headers hope that way works
+        if(line.len <= 0) break;
 
-        if (colon_pos == NULL) {
-            return NULL; // todo should return an error but no error in char* type
+        struct http_header current_header;
+        current_header.key = line;
+
+        if ((current = get_next_token(current, HTTP_LINE_DELIM, &line)) == NULL) {
+            return NULL;
+        }//todo useless check but why not
+
+        current_header.value = line;
+
+        count++;
+
+        if (count >= MAX_HEADERS ) {
+            return NULL; //todo not doing any error just stoping looking for headers
         }
+        output -> num_headers = count;
+        output -> headers[count] = current_header;
 
-        key.val = line.val;
-        key.len = (colon_pos - line.val) / (sizeof(char));
-
-        value.val = colon_pos + strlen(HTTP_HDR_KV_DELIM);
-        value.len = line.len - (key.len + strlen(HTTP_HDR_KV_DELIM));
-
-        output->headers[output->num_headers].key = key;
-        output->headers[output->num_headers].value = value;
-        output->num_headers++;
-
-        if (output->num_headers >= MAX_HEADERS) {
-            return NULL; // todo too many headers error 
-        }
     }
 
-
-    return current;
+    return current; // return the position of the end of the headers
 }
 
 
 
-int http_parse_message(const char *stream, size_t bytes_received, struct http_message *out, int *content_len) {
+
+
+
+
+int http_parse_message(const char *stream,
+                       size_t bytes_received,
+                       struct http_message *out,
+                       int *content_len) {
+
     M_REQUIRE_NON_NULL(stream);
     M_REQUIRE_NON_NULL(out);
     M_REQUIRE_NON_NULL(content_len);
@@ -149,13 +159,15 @@ int http_parse_message(const char *stream, size_t bytes_received, struct http_me
         return ERR_INVALID_ARGUMENT;//todo check if this is the right error
     }
 
-    if(strstr(stream, HTTP_HDR_END_DELIM) == NULL){ //todo check if the stream contain HTTP_HDR_END_DELIM on all the bytes received(is not limited on the bytes received) solve that
-        return 0;
-    }
-
-    char *current_pos = stream;
+    const char *current_pos = stream;
     const char *headers_end;
     struct http_string token;
+
+    // Verify headers are completely received
+    headers_end = strstr(current_pos, HTTP_HDR_END_DELIM);
+    if (headers_end == NULL) {
+        return 0;  // Headers incomplete
+    }
 
     current_pos = get_next_token(current_pos, " ", &out->method);
     if (current_pos == NULL) {

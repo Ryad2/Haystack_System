@@ -19,8 +19,10 @@
  *                  a pointer to struct http_message
  *                  and an int as parameters,
  *               and returning an int.
+ * 
  * **********************************************************************
  */
+typedef int (*EventCallback)(struct http_message* http_mess, int value);
 
 int http_init(uint16_t port, EventCallback cb);
 

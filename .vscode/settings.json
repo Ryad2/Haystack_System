@@ -2,6 +2,21 @@
     "files.associations": {
         "array": "c",
         "string": "c",
-        "string_view": "c"
+        "string_view": "c",
+        "*.tcc": "c",
+        "chrono": "c",
+        "buffer": "c",
+        "io_context": "c",
+        "socket": "c",
+        "random": "c",
+        "functional": "c",
+        "istream": "c",
+        "limits": "c",
+        "numeric": "c",
+        "atomic": "c",
+        "condition_variable": "c",
+        "executor": "c",
+        "future": "c",
+        "mutex": "c"
     }
 }
