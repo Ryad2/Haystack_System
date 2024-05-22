@@ -80,7 +80,7 @@ static void *handle_connection(void *arg)
     }
 
     // Call the HTTP message handler
-    int handler_result = handle_http_message(&msg, *active_socket);
+    int handler_result = cb(&msg, *active_socket);
     if (handler_result != ERR_NONE) {
         free(buffer);
         return &handler_result;//todo returning a pointer to an int that been declared in the same function

@@ -18,9 +18,11 @@ IMAGE := chappeli/cs202-feedback:latest
 
 # Add options for the compiler to include the library's headers
 CFLAGS += $(shell pkg-config vips --cflags)
+CFLAGS += -I/usr/include/json-c
 
 # Add the library to the linker
 LDLIBS += $(shell pkg-config vips --libs)
+LDLIBS += -ljson-c
 
 #########################################################################
 # DO NOT EDIT BELOW THIS LINE
