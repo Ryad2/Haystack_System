@@ -72,8 +72,13 @@ int do_list_cmd(int argc, char** argv)
     }
 
     int list_result = do_list(&imgfs_file, STDOUT, NULL); // STDOUT might be a placeholder for your actual output mode handling
-
+    /* test for json version
+    char* json = NULL;
+    int list_result = do_list(&imgfs_file, JSON, &json);
+    printf(json);
+    free(json);
     do_close(&imgfs_file);
+    */
 
     return list_result;
 }
