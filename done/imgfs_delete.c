@@ -5,6 +5,7 @@ int do_delete(const char* img_id, struct imgfs_file* imgfs_file)
 {
     M_REQUIRE_NON_NULL(img_id);
     M_REQUIRE_NON_NULL(imgfs_file);
+    if(imgfs_file->header.nb_files == 0) return ERR_IMAGE_NOT_FOUND;
     
     // Searching index
     int pos = -1;

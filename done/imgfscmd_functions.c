@@ -56,6 +56,7 @@ int help(int useless _unused, char** useless_too _unused)
 int do_list_cmd(int argc, char** argv)
 {
 
+    M_REQUIRE_NON_NULL(argv);
     if (argc == 0) {
         return ERR_INVALID_ARGUMENT;
     } else if (argc > 1) {
@@ -91,6 +92,8 @@ int do_create_cmd(int argc, char** argv)
 
     // Filename used
     const char* imgfs_filename = argv[0];
+    M_REQUIRE_NON_NULL(imgfs_filename);
+
     --argc; ++argv; 
 
 
@@ -153,8 +156,11 @@ int do_create_cmd(int argc, char** argv)
     }
 
     int create_error = do_create(imgfs_filename, &newfile);
+
+    if (create_error != ERR_NONE) {
+        return create_error;
+    }
     
-    // No need to check if we had an error here, we always close the file and return the error code
     do_close(&newfile);
     return create_error;
 }
@@ -177,7 +183,6 @@ int do_delete_cmd(int argc, char** argv)
     lastErr = do_open(argv[0], "rb+", &imgfs_file);
 
     if (lastErr != ERR_NONE) {
-        do_close(&imgfs_file);
         return lastErr;
     }
 

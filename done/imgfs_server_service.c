@@ -16,6 +16,8 @@
 #include "http_net.h"
 #include "imgfs_server_service.h"
 
+
+int handle_http_message(struct http_message* msg, int connection);
 // Main in-memory structure for imgFS
 static struct imgfs_file fs_file;
 static uint16_t server_port;
