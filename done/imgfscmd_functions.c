@@ -77,8 +77,8 @@ int do_list_cmd(int argc, char** argv)
     int list_result = do_list(&imgfs_file, JSON, &json);
     printf(json);
     free(json);
-    do_close(&imgfs_file);
     */
+    do_close(&imgfs_file);
 
     return list_result;
 }

@@ -46,7 +46,7 @@ int do_read(const char* img_id, int resolution, char** image_buffer,
     if (imgfs_file->file == NULL || 
         fseek(imgfs_file->file, md->offset[resolution], SEEK_SET) || 
         fread(*image_buffer, md->size[resolution], 1, imgfs_file->file) != 1) {
-
+        free(image_buffer);
         return ERR_IO;
     }
 

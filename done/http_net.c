@@ -66,7 +66,7 @@ static void *handle_connection(void *arg)
             free(buffer);
             return &parse_result;//todo returning a pointer to an int that been declared in the same function
         }
-
+        
         if (parse_result == 1) {
             // Full message has been parsed
             break;
@@ -88,12 +88,6 @@ static void *handle_connection(void *arg)
 
     free(buffer);
     return &our_ERR_NONE;
-
-
-
-
-
-
 
     //  PREVIOUS CODE
     /*
@@ -170,7 +164,50 @@ int http_receive(void)
  */
 int http_serve_file(int connection, const char* filename)
 {
-    int ret = ERR_NONE;
+    M_REQUIRE_NON_NULL(filename);
+
+    // open file
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        fprintf(stderr, "http_serve_file(): Failed to open file \"%s\"\n", filename);
+        return http_reply(connection, "404 Not Found", "", "", 0);
+    }
+
+    // get its size
+    fseek(file, 0, SEEK_END);
+    const long pos = ftell(file);
+    if (pos < 0) {
+        fprintf(stderr, "http_serve_file(): Failed to tell file size of \"%s\"\n",
+                filename);
+        fclose(file);
+        return ERR_IO;
+    }
+    rewind(file);
+    const size_t file_size = (size_t) pos;
+
+    // read file content
+    char* const buffer = calloc(file_size + 1, 1);
+    if (buffer == NULL) {
+        fprintf(stderr, "http_serve_file(): Failed to allocate memory to serve \"%s\"\n", filename);
+        fclose(file);
+        return ERR_IO;
+    }
+
+    const size_t bytes_read = fread(buffer, 1, file_size, file);
+    if (bytes_read != file_size) {
+        fprintf(stderr, "http_serve_file(): Failed to read \"%s\"\n", filename);
+        fclose(file);
+        return ERR_IO;
+    }
+
+    // send the file
+    const int  ret = http_reply(connection, HTTP_OK,
+                                "Content-Type: text/html; charset=utf-8" HTTP_LINE_DELIM,
+                                buffer, file_size);
+
+    // garbage collecting
+    fclose(file);
+    free(buffer);
     return ret;
 }
 
@@ -195,7 +232,7 @@ int http_reply(int connection, const char* status, const char* headers, const ch
         }
     }
 
-    size_t len = header_len + body_len + 1;
+    size_t len = header_len +1 + body_len +1;
     char* resp = calloc(1, len);
     if (resp == NULL) {
         return ERR_OUT_OF_MEMORY;
@@ -208,7 +245,7 @@ int http_reply(int connection, const char* status, const char* headers, const ch
     }
 
     if (body != NULL) {
-        strcat(resp, body);
+        memcpy(&resp[header_len], body, body_len);
     }
     
     tcp_send(connection, resp, len);

@@ -36,10 +36,11 @@ int server_startup (int argc, char **argv)
     }
     print_header(&fs_file.header);
 
-    server_port = (uint16_t) http_init(argc > 2 ? atouint16(argv[2]) : DEFAULT_LISTENING_PORT, handle_http_message);
+    server_port = argc > 2 ? atouint16(argv[2]) : DEFAULT_LISTENING_PORT;
+    uint16_t listening_port = (uint16_t) http_init(server_port, handle_http_message);
 
     if (VIPS_INIT(argv[0])) {
-        return vips_error_exit(NULL);
+        return ERR_IMGLIB;
     }
 
     printf("ImgFS server started on http://localhost:%d\n", server_port);
@@ -57,17 +58,7 @@ void server_shutdown (void)
     http_close();
     do_close(&fs_file);
     vips_shutdown();
-    return 0;
 }
-
-
-
-
-
-
-
-
-
 
 /**********************************************************************
  * Sends error message.
@@ -104,7 +95,6 @@ static int reply_302_msg(int connection)
 int handle_http_message(struct http_message* msg, int connection)
 {
     M_REQUIRE_NON_NULL(msg);
-
     if (http_match_verb(&msg->uri, "/") || http_match_uri(msg, "/index.html")) {
         return http_serve_file(connection, BASE_FILE);
     }
@@ -114,7 +104,7 @@ int handle_http_message(struct http_message* msg, int connection)
                  (int) msg->uri.len, msg->uri.val);
 
     if (http_match_uri(msg, URI_ROOT "/list")) {
-        return handle_list_call(msg, connection);
+        return handle_list_call(connection);
     }
     else if (http_match_uri(msg, URI_ROOT "/insert") && http_match_verb(&msg->method, "POST")) {
         return handle_insert_call(msg, connection);
@@ -129,57 +119,58 @@ int handle_http_message(struct http_message* msg, int connection)
         return reply_error_msg(connection, ERR_INVALID_COMMAND);
 }
 
-int handle_list_call(struct http_message* msg, int connection) {
+int handle_list_call(int connection) {
     char* output = NULL;
     int errcode = 0;
     if ((errcode = do_list(&fs_file, JSON, &output))) {
         return reply_error_msg(connection, errcode);
     }
 
-    return http_reply(connection, HTTP_OK, "Content-Type: application/json" HTTP_LINE_DELIM, output, sizeof(output));
+    errcode = http_reply(connection, HTTP_OK, "Content-Type: application/json" HTTP_LINE_DELIM, output, strlen(output));
+    free(output);
+    return errcode;
 }
 
 int handle_read_call(struct http_message* msg, int connection) {
-    int errcode = 0;
     char res[6] = {0};
-    if ((errcode = http_get_var(&msg->uri, "res", res, 6))) {
-        return reply_error_msg(connection, errcode);
-    }
-    char img_id[MAX_IMG_ID] = {0};
-    if (( errcode = http_get_var(&msg->uri, "img_id", img_id, MAX_IMG_ID))) {
-        return reply_error_msg(connection, errcode);
+    if (!http_get_var(&msg->uri, "res", res, 6)) {
+        return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
 
+    char img_id[MAX_IMG_ID +1] = {0};
+    if (!http_get_var(&msg->uri, "img_id", img_id, MAX_IMG_ID)) {
+        return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
+    }
+
+    int errcode = 0;
     char* buffer = NULL;
     uint32_t size = 0;
     if ((errcode = do_read(img_id, atoi(res), &buffer, &size, &fs_file))) {
         return reply_error_msg(connection, errcode);
     }
-    return http_reply(connection, HTTP_OK, "Content-Type: image/jpeg" HTTP_LINE_DELIM, buffer, size);
+    errcode = http_reply(connection, HTTP_OK, "Content-Type: image/jpeg" HTTP_LINE_DELIM, buffer, size);
+    free(buffer);
+    return errcode;
 }
 
 int handle_delete_call(struct http_message* msg, int connection) {
-    int errcode = 0;
     char img_id[MAX_IMG_ID] = {0};
-    if (( errcode = http_get_var(&msg->uri, "img_id", img_id, MAX_IMG_ID))) {
-        return reply_error_msg(connection, errcode);
+    if (!http_get_var(&msg->uri, "img_id", img_id, MAX_IMG_ID)) {
+        return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
 
+    int errcode = 0;
     if ((errcode = do_delete(img_id, &fs_file))) {
         return reply_error_msg(connection, errcode);
     }
 
-    char port_string[50] = {0};
-    sprintf(port_string, "Location: http://" "localhost:%d/index.html", server_port);
-    return http_reply(connection, "302 Found", port_string, NULL, 0);
-
+    return reply_302_msg(connection);
 }
 
 int handle_insert_call(struct http_message* msg, int connection) {
-    int errcode = 0;
     char name[MAX_IMG_ID+1] = {0};
-    if ((errcode = http_get_var(&msg->uri, "name", name, 6))) {
-        return reply_error_msg(connection, errcode);
+    if (!http_get_var(&msg->uri, "name", name, 6)) {
+        return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
 
     size_t size = msg->body.len;
@@ -187,13 +178,13 @@ int handle_insert_call(struct http_message* msg, int connection) {
     if (buffer == NULL) {
         return reply_error_msg(connection, ERR_OUT_OF_MEMORY);
     }
-    memcpy(buffer, msg->body.val, size);
 
+    memcpy(buffer, msg->body.val, size);
+    int errcode = 0;
     if ((errcode = do_insert(buffer, size, name, &fs_file))) {
+        free(buffer);
         return reply_error_msg(connection, errcode);
     }
-
-    char port_string[50] = {0};
-    sprintf(port_string, "Location: http://" "localhost:%d/index.html", server_port);
-    return http_reply(connection, HTTP_OK, port_string, NULL, 0);
+    free(buffer);
+    return reply_302_msg(connection);
 }

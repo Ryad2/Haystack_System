@@ -50,7 +50,7 @@ int http_get_var(const struct http_string* url, const char* name, char* out, siz
         return ERR_INVALID_ARGUMENT;
     }
 
-    char* name_cpy = calloc(strlen(name) + 2, sizeof(char));
+    char* name_cpy = calloc(1, strlen(name) + 2);
     if (name_cpy == NULL) {
         return ERR_IO;//todo check if this is the right error
     }
@@ -97,7 +97,7 @@ static const char* get_next_token(const char* message,
     
     if (output != NULL) {
         output->val = message;          // pointer to the beginning of the token
-        output->len = (end_token - message) / (sizeof(char));    // todo length of the substring in bytes (check if should be in bytes)
+        output->len = end_token - message;
     }
     // point just after the delimiter
     return end_token + strlen(delimiter);
@@ -105,46 +105,37 @@ static const char* get_next_token(const char* message,
 
 static const char* http_parse_headers(const char* header_start,
                                       struct http_message* output) {
-
-    const char* current = get_next_token(header_start,
-                                         HTTP_LINE_DELIM,
-                                          NULL);
+    const char* currentLineStart = header_start;
     struct http_string line;
 
     output -> num_headers = 0;
     int count = 0;
 
-    while ((current = get_next_token(current, HTTP_HDR_KV_DELIM, &line)) != NULL)
-    {//todo didn't use HTTP_HDR_END_DELIM for the end of the headers hope that way works
+    while ((currentLineStart = get_next_token(currentLineStart, HTTP_HDR_KV_DELIM, &line)) != NULL)
+    {// since HTTP_HDR_END_DELIM is HTTP_HDR_KV_DELIM twice in a row,
+     //we can detect it with a .length of 0 instead of searching for it
         if(line.len <= 0) break;
-
         struct http_header current_header;
         current_header.key = line;
 
-        if ((current = get_next_token(current, HTTP_LINE_DELIM, &line)) == NULL) {
+        if ((currentLineStart = get_next_token(currentLineStart, HTTP_LINE_DELIM, &line)) == NULL) {
             return NULL;
-        }//todo useless check but why not
+        } //shouldnt happen on a well formed message
 
         current_header.value = line;
 
-        count++;
-
         if (count >= MAX_HEADERS ) {
-            return NULL; //todo not doing any error just stoping looking for headers
+            return NULL; // we cant point to the end of headers so we return null
         }
-        output -> num_headers = count;
         output -> headers[count] = current_header;
-
+        count++;
+        output -> num_headers = count;
     }
 
-    return current; // return the position of the end of the headers
+    // return the position of the last header because returnning the end would return NULL on a request with no body
+    // (for exemple on a GET)
+    return output->headers[count-1].key.val;
 }
-
-
-
-
-
-
 
 int http_parse_message(const char *stream,
                        size_t bytes_received,
@@ -218,7 +209,6 @@ int http_parse_message(const char *stream,
         out->body.val = NULL;
         out->body.len = 0;
     }
-
     return 1;  // full message have been parsed
 }
 
