@@ -79,8 +79,6 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IMGLIB;
     }
 
-
-
     // Saving the resized image to a buffer
     if (vips_jpegsave_buffer(out, &resized_buffer, &resized_length, NULL)) {
         clean_up(in, out, resized_buffer, image_buffer);
@@ -93,15 +91,17 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IO;  // File seek error
     }
 
-    // updating the metadata of the image
-    metadata -> offset[resolution] = ftell(imgfs_file -> file);
-    metadata -> size[resolution]   = resized_length;
-
     // Write the resized image to the file
     if(fwrite(resized_buffer, resized_length, NUM_IMGS, imgfs_file -> file) != NUM_IMGS) {
         clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IO;
     }
+
+
+    // updating the metadata of the image
+    metadata -> offset[resolution] = ftell(imgfs_file -> file);
+    metadata -> size[resolution]   = resized_length;
+
 
     // fiding the position of the metadata of the image in the file
     int metadata_file_pointer = sizeof(struct imgfs_header) + index * sizeof(struct img_metadata);

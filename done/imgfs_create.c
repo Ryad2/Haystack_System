@@ -8,6 +8,8 @@ int do_create(const char* imgfs_filename, struct imgfs_file* imgfs_file)
     M_REQUIRE_NON_NULL(imgfs_file);
     FILE* output = fopen(imgfs_filename, "wb");
 
+    if (output == NULL) return ERR_IO; // Return a NUll if an opren error accure
+
     // Initialisation of every field
     imgfs_file->header.nb_files = 0;
     imgfs_file->header.version = 0;
@@ -24,11 +26,13 @@ int do_create(const char* imgfs_filename, struct imgfs_file* imgfs_file)
 
     // Writing header
     if(fwrite(&imgfs_file->header, sizeof(struct imgfs_header), 1, output) != 1) {
+        fclose(imgfs_file -> file);
         return ERR_IO;
     }
 
     // Writing metadatas
     if(fwrite(imgfs_file->metadata, sizeof(struct img_metadata), imgfs_file->header.max_files, output) != imgfs_file->header.max_files) {
+        fclose(imgfs_file -> file);
         return ERR_IO;
     }
     

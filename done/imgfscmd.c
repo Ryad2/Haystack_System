@@ -29,7 +29,9 @@ struct command_mapping {
  */
 int main(int argc, char* argv[]) {
     
-    VIPS_INIT(argv[0]);
+    if (VIPS_INIT(argv[0])) {
+        return ERR_IMGLIB; // check if right handling 
+    }
     int ret = 0;
 
     if (argc < 2) {
