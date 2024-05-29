@@ -99,35 +99,8 @@ static int reply_302_msg(int connection)
 }
 
 /**********************************************************************
- * Simple handling of http message. TO BE UPDATED WEEK 13
+ * Handler for each actions
  ********************************************************************** */
-int handle_http_message(struct http_message* msg, int connection)
-{
-    M_REQUIRE_NON_NULL(msg);
-    if (http_match_verb(&msg->uri, "/") || http_match_uri(msg, "/index.html")) {
-        return http_serve_file(connection, BASE_FILE);
-    }
-
-    debug_printf("handle_http_message() on connection %d. URI: %.*s\n",
-                 connection,
-                 (int) msg->uri.len, msg->uri.val);
-
-    if (http_match_uri(msg, URI_ROOT "/list")) {
-        return handle_list_call(connection);
-    }
-    else if (http_match_uri(msg, URI_ROOT "/insert") && http_match_verb(&msg->method, "POST")) {
-        return handle_insert_call(msg, connection);
-    }
-    else if (http_match_uri(msg, URI_ROOT "/read")) {
-        return handle_read_call(msg, connection);
-    }
-    else if (http_match_uri(msg, URI_ROOT "/delete")) {
-        return handle_delete_call(msg, connection);
-    } 
-    else
-        return reply_error_msg(connection, ERR_INVALID_COMMAND);
-}
-
 int handle_list_call(int connection) {
     char* output = NULL;
     int errcode = 0;
@@ -189,7 +162,7 @@ int handle_delete_call(struct http_message* msg, int connection) {
 
 int handle_insert_call(struct http_message* msg, int connection) {
     char name[MAX_IMG_ID +5] = {0};
-    if (!http_get_var(&msg->uri, "name", name, 6)) {
+    if (!http_get_var(&msg->uri, "name", name, MAX_IMG_ID +5)) {
         return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
 
@@ -210,4 +183,34 @@ int handle_insert_call(struct http_message* msg, int connection) {
     pthread_mutex_unlock(&mutex);
     free(buffer);
     return reply_302_msg(connection);
+}
+
+/**********************************************************************
+ * Simple handling of http message. 
+ ********************************************************************** */
+int handle_http_message(struct http_message* msg, int connection)
+{
+    M_REQUIRE_NON_NULL(msg);
+    if (http_match_verb(&msg->uri, "/") || http_match_uri(msg, "/index.html")) {
+        return http_serve_file(connection, BASE_FILE);
+    }
+
+    debug_printf("handle_http_message() on connection %d. URI: %.*s\n",
+                 connection,
+                 (int) msg->uri.len, msg->uri.val);
+
+    if (http_match_uri(msg, URI_ROOT "/list")) {
+        return handle_list_call(connection);
+    }
+    else if (http_match_uri(msg, URI_ROOT "/insert") && http_match_verb(&msg->method, "POST")) {
+        return handle_insert_call(msg, connection);
+    }
+    else if (http_match_uri(msg, URI_ROOT "/read")) {
+        return handle_read_call(msg, connection);
+    }
+    else if (http_match_uri(msg, URI_ROOT "/delete")) {
+        return handle_delete_call(msg, connection);
+    } 
+    else
+        return reply_error_msg(connection, ERR_INVALID_COMMAND);
 }

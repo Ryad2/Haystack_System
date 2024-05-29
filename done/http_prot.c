@@ -36,6 +36,7 @@ int http_match_verb(const struct http_string* method, const char* verb){
             return 0;
         }
     }
+
     return 1;
 }
 

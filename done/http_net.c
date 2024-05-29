@@ -19,6 +19,8 @@
 #include "socket_layer.h"
 #include "error.h"
 
+static const MAX_IMAGE_BYTES = 5000 * 1000; //taken from index
+static const BUFFER_SIZE = MAX_HEADER_SIZE + MAX_IMAGE_BYTES + 1;
 static int passive_socket = -1;
 static EventCallback cb;
 
@@ -47,7 +49,7 @@ static void *handle_connection(void *arg)
 
 
     int *active_socket = (int *) arg;
-    char *buffer = calloc(1, MAX_HEADER_SIZE + 1);  // Allocate buffer
+    char *buffer = calloc(1, BUFFER_SIZE);  // Allocate buffer
     if (buffer == NULL) {
         close(active_socket);
         free(active_socket);
@@ -60,7 +62,7 @@ static void *handle_connection(void *arg)
     memset(&msg, 0, sizeof(msg));
 
     while (1) {
-        int n = tcp_read(*active_socket, &buffer[bytes_received], MAX_HEADER_SIZE - bytes_received);
+        int n = tcp_read(*active_socket, &buffer[bytes_received], BUFFER_SIZE - bytes_received);
         if (n <= 0) {
             close(active_socket);
             free(buffer);
@@ -82,14 +84,8 @@ static void *handle_connection(void *arg)
         
         if (parse_result == 1) {
             // Call the HTTP message handler
-            // int handler_result = 
+            // drawns error 
             cb(&msg, *active_socket);
-            /**if (handler_result != ERR_NONE) {
-                close(active_socket);
-                free(buffer);
-                free(active_socket);
-                return &handler_result;//todo returning a pointer to an int that been declared in the same function
-            }**/
 
             // empties values for new message
             bytes_received = 0;
@@ -99,7 +95,7 @@ static void *handle_connection(void *arg)
         }
 
         // If message is incomplete, continue reading
-        if (bytes_received >= MAX_HEADER_SIZE) {
+        if (bytes_received >= BUFFER_SIZE) {
             close(active_socket);
             free(buffer);
             free(active_socket);
