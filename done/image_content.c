@@ -7,9 +7,6 @@
 #include <stdio.h>
 #define NUM_IMGS 1
 
-
-
-
 void clean_up(VipsImage *in, VipsImage *out, void* resized_buffer, void* image_buffer) {
         g_object_unref(in);
         g_object_unref(out);
@@ -91,15 +88,16 @@ int lazily_resize(int resolution, struct imgfs_file* imgfs_file, size_t index) {
         return ERR_IO;  // File seek error
     }
 
+    uint64_t offset = ftell(imgfs_file -> file);
+
     // Write the resized image to the file
     if(fwrite(resized_buffer, resized_length, NUM_IMGS, imgfs_file -> file) != NUM_IMGS) {
         clean_up(in, out, resized_buffer, image_buffer);
         return ERR_IO;
     }
 
-
     // updating the metadata of the image
-    metadata -> offset[resolution] = ftell(imgfs_file -> file);
+    metadata -> offset[resolution] = offset;
     metadata -> size[resolution]   = resized_length;
 
 

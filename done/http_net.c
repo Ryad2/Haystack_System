@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include "http_prot.h"
 #include "http_net.h"
@@ -34,6 +35,12 @@ MK_OUR_ERR(ERR_IO);
  */
 static void *handle_connection(void *arg)
 {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT );
+    sigaddset(&mask, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+
     if (arg == NULL) {
         return &our_ERR_INVALID_ARGUMENT;
     }
@@ -42,6 +49,8 @@ static void *handle_connection(void *arg)
     int *active_socket = (int *) arg;
     char *buffer = calloc(1, MAX_HEADER_SIZE + 1);  // Allocate buffer
     if (buffer == NULL) {
+        close(active_socket);
+        free(active_socket);
         return &our_ERR_OUT_OF_MEMORY;
     }
 
@@ -51,9 +60,11 @@ static void *handle_connection(void *arg)
     memset(&msg, 0, sizeof(msg));
 
     while (1) {
-        int n = tcp_read(*active_socket, buffer + bytes_received, MAX_HEADER_SIZE - bytes_received);
+        int n = tcp_read(*active_socket, &buffer[bytes_received], MAX_HEADER_SIZE - bytes_received);
         if (n <= 0) {
+            close(active_socket);
             free(buffer);
+            free(active_socket);
             return &our_ERR_IO;
         }
 
@@ -63,30 +74,42 @@ static void *handle_connection(void *arg)
         // Try to parse the message
         int parse_result = http_parse_message(buffer, bytes_received, &msg, &content_len);
         if (parse_result < 0) {
+            close(active_socket);
             free(buffer);
+            free(active_socket);
             return &parse_result;//todo returning a pointer to an int that been declared in the same function
         }
         
         if (parse_result == 1) {
-            // Full message has been parsed
-            break;
+            // Call the HTTP message handler
+            // int handler_result = 
+            cb(&msg, *active_socket);
+            /**if (handler_result != ERR_NONE) {
+                close(active_socket);
+                free(buffer);
+                free(active_socket);
+                return &handler_result;//todo returning a pointer to an int that been declared in the same function
+            }**/
+
+            // empties values for new message
+            bytes_received = 0;
+            content_len = 0;
+            memset(buffer, 0, sizeof(*buffer));
+            memset(&msg, 0, sizeof(msg));
         }
 
         // If message is incomplete, continue reading
         if (bytes_received >= MAX_HEADER_SIZE) {
+            close(active_socket);
             free(buffer);
+            free(active_socket);
             return &our_ERR_INVALID_ARGUMENT;
         }
     }
 
-    // Call the HTTP message handler
-    int handler_result = cb(&msg, *active_socket);
-    if (handler_result != ERR_NONE) {
-        free(buffer);
-        return &handler_result;//todo returning a pointer to an int that been declared in the same function
-    }
-
+    close(active_socket);
     free(buffer);
+    free(active_socket);
     return &our_ERR_NONE;
 
     //  PREVIOUS CODE
@@ -150,12 +173,29 @@ void http_close(void)
  */
 int http_receive(void)
 {
-    int active_socket = tcp_accept(passive_socket);
-    if (active_socket < 0) {
-        return active_socket;
+    int* active_socket = malloc(sizeof(int));
+    if (active_socket == NULL) {
+        return ERR_OUT_OF_MEMORY;
     }
 
-    handle_connection(&active_socket);
+    *active_socket = tcp_accept(passive_socket);
+    if (*active_socket < 0) {
+        free(active_socket);
+        return ERR_IO;
+    }
+
+    pthread_attr_t attr;
+
+    if (pthread_attr_init(&attr) || pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
+        free(active_socket);
+        return ERR_IO;
+    }
+    
+    pthread_t thread;
+    pthread_create(&thread, &attr, handle_connection, active_socket);
+
+    pthread_attr_destroy(&attr);
+
     return ERR_NONE;
 }
 

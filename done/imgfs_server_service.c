@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h> // uint16_t
+#include <pthread.h>
 
 #include "error.h"
 #include "util.h" // atouint16
@@ -22,6 +23,7 @@ int handle_http_message(struct http_message* msg, int connection);
 // Main in-memory structure for imgFS
 static struct imgfs_file fs_file;
 static uint16_t server_port;
+pthread_mutex_t mutex;
 
 #define URI_ROOT "/imgfs"
 
@@ -33,8 +35,12 @@ int server_startup (int argc, char **argv)
 {
     if (argc < 2) return ERR_NOT_ENOUGH_ARGUMENTS;
     int errcode = ERR_NONE;
-    if ((errcode = do_open(argv[1], "rb", &fs_file))) {
+    if ((errcode = do_open(argv[1], "rb+", &fs_file))) {
         return errcode;
+    }
+
+    if (pthread_mutex_init(&mutex, NULL)) {
+        return ERR_IO;
     }
     print_header(&fs_file.header);
 
@@ -58,6 +64,7 @@ void server_shutdown (void)
 {
     fprintf(stderr, "Shutting down...\n");
     http_close();
+    pthread_mutex_destroy(&mutex);
     do_close(&fs_file);
     vips_shutdown();
 }
@@ -124,10 +131,13 @@ int handle_http_message(struct http_message* msg, int connection)
 int handle_list_call(int connection) {
     char* output = NULL;
     int errcode = 0;
+    pthread_mutex_lock(&mutex);
     if ((errcode = do_list(&fs_file, JSON, &output))) {
+        pthread_mutex_unlock(&mutex);
         return reply_error_msg(connection, errcode);
     }
 
+    pthread_mutex_unlock(&mutex);
     errcode = http_reply(connection, HTTP_OK, "Content-Type: application/json" HTTP_LINE_DELIM, output, strlen(output));
     free(output);
     return errcode;
@@ -147,9 +157,15 @@ int handle_read_call(struct http_message* msg, int connection) {
     int errcode = 0;
     char* buffer = NULL;
     uint32_t size = 0;
-    if ((errcode = do_read(img_id, atoi(res), &buffer, &size, &fs_file))) {
+    pthread_mutex_lock(&mutex);
+    if ((errcode = do_read(img_id, resolution_atoi(res), &buffer, &size, &fs_file))) {
+        pthread_mutex_unlock(&mutex);
+        if (buffer != NULL) {
+            free(buffer);
+        }
         return reply_error_msg(connection, errcode);
     }
+    pthread_mutex_unlock(&mutex);
     errcode = http_reply(connection, HTTP_OK, "Content-Type: image/jpeg" HTTP_LINE_DELIM, buffer, size);
     free(buffer);
     return errcode;
@@ -162,15 +178,17 @@ int handle_delete_call(struct http_message* msg, int connection) {
     }
 
     int errcode = 0;
+    pthread_mutex_lock(&mutex);
     if ((errcode = do_delete(img_id, &fs_file))) {
+        pthread_mutex_unlock(&mutex);
         return reply_error_msg(connection, errcode);
     }
-
+    pthread_mutex_unlock(&mutex);
     return reply_302_msg(connection);
 }
 
 int handle_insert_call(struct http_message* msg, int connection) {
-    char name[MAX_IMG_ID+1] = {0};
+    char name[MAX_IMG_ID +5] = {0};
     if (!http_get_var(&msg->uri, "name", name, 6)) {
         return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
@@ -183,10 +201,13 @@ int handle_insert_call(struct http_message* msg, int connection) {
 
     memcpy(buffer, msg->body.val, size);
     int errcode = 0;
+    pthread_mutex_lock(&mutex);
     if ((errcode = do_insert(buffer, size, name, &fs_file))) {
+        pthread_mutex_unlock(&mutex);
         free(buffer);
         return reply_error_msg(connection, errcode);
     }
+    pthread_mutex_unlock(&mutex);
     free(buffer);
     return reply_302_msg(connection);
 }
