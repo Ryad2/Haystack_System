@@ -8,7 +8,6 @@
 #include "imgfs.h"
 #include "imgfscmd_functions.h"
 #include "util.h"   // for _unused
-
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
@@ -55,7 +54,6 @@ int help(int useless _unused, char** useless_too _unused)
  ********************************************************************** */
 int do_list_cmd(int argc, char** argv)
 {
-
     M_REQUIRE_NON_NULL(argv);
     if (argc == 0) {
         return ERR_INVALID_ARGUMENT;
@@ -65,20 +63,12 @@ int do_list_cmd(int argc, char** argv)
 
     const char* imgfs_file_name = argv[0];
     struct imgfs_file imgfs_file;
-
     int open_result = do_open(imgfs_file_name, "rb", &imgfs_file);
 
     if (open_result != ERR_NONE) {
         return open_result;
     }
-
-    int list_result = do_list(&imgfs_file, STDOUT, NULL); // STDOUT might be a placeholder for your actual output mode handling
-    /* test for json version
-    char* json = NULL;
-    int list_result = do_list(&imgfs_file, JSON, &json);
-    printf(json);
-    free(json);
-    */
+    int list_result = do_list(&imgfs_file, STDOUT, NULL);
     do_close(&imgfs_file);
 
     return list_result;
@@ -90,7 +80,6 @@ int do_list_cmd(int argc, char** argv)
 int do_create_cmd(int argc, char** argv)
 {
     M_REQUIRE_NON_NULL(argv);
-
     if (argc == 0) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
     }
@@ -99,8 +88,7 @@ int do_create_cmd(int argc, char** argv)
     const char* imgfs_filename = argv[0];
     M_REQUIRE_NON_NULL(imgfs_filename);
 
-    --argc; ++argv; 
-
+    --argc; ++argv;
 
     struct imgfs_file newfile;
     newfile.header.max_files = default_max_files;
@@ -114,12 +102,10 @@ int do_create_cmd(int argc, char** argv)
             if (argc < 2) {
                 return ERR_NOT_ENOUGH_ARGUMENTS;
             }
-
             newfile.header.max_files = atouint32(argv[1]);
             if (newfile.header.max_files == 0) {
                 return ERR_MAX_FILES;
             }
-
             // Used "-max_files" and the value
             argc -= 2; argv +=2; 
 
@@ -128,14 +114,12 @@ int do_create_cmd(int argc, char** argv)
             if (argc < 3) {
                 return ERR_NOT_ENOUGH_ARGUMENTS;
             }
-
             newfile.header.resized_res[0] = atouint16(argv[1]);
             newfile.header.resized_res[1] = atouint16(argv[2]);
             if (newfile.header.resized_res[0] == 0 || newfile.header.resized_res[1] == 0 ||
                 newfile.header.resized_res[0] > MAX_THUMB_RES || newfile.header.resized_res[1] > MAX_THUMB_RES) {
                 return ERR_RESOLUTIONS;
             }
-
             // Used "-thumb_res" and the two values
             argc -= 3; argv += 3;
 
@@ -144,70 +128,63 @@ int do_create_cmd(int argc, char** argv)
             if (argc < 3) {
                 return ERR_NOT_ENOUGH_ARGUMENTS;
             }
-
             newfile.header.resized_res[2] = atouint16(argv[1]);
             newfile.header.resized_res[3] = atouint16(argv[2]);
             if (newfile.header.resized_res[2] == 0 || newfile.header.resized_res[3] == 0 ||
                 newfile.header.resized_res[2] > MAX_SMALL_RES || newfile.header.resized_res[3] > MAX_SMALL_RES) {
                 return ERR_RESOLUTIONS;
             }
-
             // Used "-small_res" and the two values
             argc -= 3; argv += 3;
-
         } else {
             return ERR_INVALID_ARGUMENT;
         }
     }
-
     int create_error = do_create(imgfs_filename, &newfile);
-
     if (create_error != ERR_NONE) {
         return create_error;
     }
-    
     do_close(&newfile);
     return create_error;
 }
 
 /**********************************************************************
  * Deletes an image from the imgFS.
- */
+ *********************************************************************/
 int do_delete_cmd(int argc, char** argv)
 {
     M_REQUIRE_NON_NULL(argv);
-
     if(argc < 2) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
     } else if (0 == strlen(argv[1]) || MAX_IMG_ID < strlen(argv[1])) {
         return ERR_INVALID_IMGID;
     }
-
     struct imgfs_file imgfs_file;
     int lastErr = ERR_NONE;
     lastErr = do_open(argv[0], "rb+", &imgfs_file);
-
     if (lastErr != ERR_NONE) {
         return lastErr;
     }
-
     lastErr = do_delete(argv[1], &imgfs_file);
-
     do_close(&imgfs_file);
     return lastErr;
 }
 
+
+
 // ======================================================================
-int do_read_cmd(int argc, char **argv)
-{
+/**********************************************************************
+ * Reads an image from the imgFS and saves it to a file.
+ **********************************************************************/
+
+int do_read_cmd(int argc, char **argv) {
+
     M_REQUIRE_NON_NULL(argv);
     if (argc != 2 && argc != 3) return ERR_NOT_ENOUGH_ARGUMENTS;
-
     const char * const img_id = argv[1];
-
     const int resolution = (argc == 3) ? resolution_atoi(argv[2]) : ORIG_RES;
-    if (resolution == -1) return ERR_RESOLUTIONS;
 
+    if (resolution == -1) return ERR_RESOLUTIONS;
     struct imgfs_file myfile;
     zero_init_var(myfile);
     int error = do_open(argv[0], "rb+", &myfile);
@@ -215,6 +192,7 @@ int do_read_cmd(int argc, char **argv)
 
     char *image_buffer = NULL;
     uint32_t image_size = 0;
+
     error = do_read(img_id, resolution, &image_buffer, &image_size, &myfile);
     do_close(&myfile);
     if (error != ERR_NONE) {
@@ -233,8 +211,12 @@ int do_read_cmd(int argc, char **argv)
 }
 
 // ======================================================================
-int do_insert_cmd(int argc, char **argv)
-{
+
+/**********************************************************************
+ * Inserts a new image into the imgFS.
+ **********************************************************************/
+int do_insert_cmd(int argc, char **argv) {
+
     M_REQUIRE_NON_NULL(argv);
     if (argc != 3) return ERR_NOT_ENOUGH_ARGUMENTS;
 
@@ -252,15 +234,17 @@ int do_insert_cmd(int argc, char **argv)
         do_close(&myfile);
         return error;
     }
-
     error = do_insert(image_buffer, image_size, argv[1], &myfile);
     free(image_buffer);
     do_close(&myfile);
     return error;
 }
 
-static void create_name(const char* img_id, int resolution, char** new_name) 
-{
+
+
+// Helper function to create a new file name based on image ID and resolution
+static void create_name(const char* img_id, int resolution, char** new_name){
+
     *new_name = calloc(1, MAX_IMG_ID + 6 + 4);
     if (*new_name == NULL) {
         return;
@@ -277,6 +261,8 @@ static void create_name(const char* img_id, int resolution, char** new_name)
     strcat(*new_name, ".jpg");
 }
 
+
+// Helper function to write an image buffer to disk
 static int write_disk_image(const char *filename, const char *image_buffer, uint32_t image_size)
 {
     FILE* file = fopen(filename, "wb");
@@ -291,6 +277,9 @@ static int write_disk_image(const char *filename, const char *image_buffer, uint
     return ERR_NONE;
 }
 
+
+
+// Helper function to read an image file from disk into a buffer
 static int read_disk_image(const char *path, char **image_buffer, uint32_t *image_size)
 {
     FILE* file = fopen(path, "rb");
