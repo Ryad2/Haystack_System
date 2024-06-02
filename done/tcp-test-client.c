@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
         struct sockaddr_in server_address;
         server_address.sin_family = AF_INET;
         server_address.sin_port = htons(port);
-        server_address.sin_addr.s_addr = htonl(INADDR_ANY);  //todo just browsing Listen on all interfaces
+        server_address.sin_addr.s_addr = htonl(INADDR_ANY);
 
         if (connect(socketID, &server_address, sizeof(server_address))) {
             perror("fail in connecting");
