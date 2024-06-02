@@ -19,11 +19,16 @@
 #include "socket_layer.h"
 #include "error.h"
 
+// Maximum size of an image in bytes
 static const MAX_IMAGE_BYTES = 5000 * 1000; //taken from index
+// Buffer size to accommodate headers and image data
 static const BUFFER_SIZE = MAX_HEADER_SIZE + MAX_IMAGE_BYTES + 1;
+// Passive socket descriptor
 static int passive_socket = -1;
+// Event callback function pointer
 static EventCallback cb;
 
+// Macro to define error codes as static variables
 #define MK_OUR_ERR(X) \
 static int our_ ## X = X
 
@@ -34,12 +39,13 @@ MK_OUR_ERR(ERR_IO);
 
 /*******************************************************************
  * Handle connection
+ * This function handles the connection with the client.
  */
-static void *handle_connection(void *arg)
-{
+static void *handle_connection(void *arg) {
+    // Block SIGINT and SIGTERM signals for this thread
     sigset_t mask;
     sigemptyset(&mask);
-    sigaddset(&mask, SIGINT );
+    sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGTERM);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
@@ -62,7 +68,9 @@ static void *handle_connection(void *arg)
     memset(&msg, 0, sizeof(msg));
 
     while (1) {
-        int n = tcp_read(*active_socket, &buffer[bytes_received], BUFFER_SIZE - bytes_received);
+        // Read data from the socket
+        int n = tcp_read(*active_socket, &buffer[bytes_received],
+                         BUFFER_SIZE - bytes_received);
         if (n <= 0) {
             close(active_socket);
             free(buffer);
@@ -79,12 +87,11 @@ static void *handle_connection(void *arg)
             close(active_socket);
             free(buffer);
             free(active_socket);
-            return &parse_result;//todo returning a pointer to an int that been declared in the same function
+            return &parse_result;   // Returning a pointer to an int declared in the same function
         }
-        
+
         if (parse_result == 1) {
             // Call the HTTP message handler
-            // drawns error 
             cb(&msg, *active_socket);
 
             // empties values for new message
@@ -103,49 +110,19 @@ static void *handle_connection(void *arg)
         }
     }
 
+    // Clean up resources
     close(active_socket);
     free(buffer);
     free(active_socket);
     return &our_ERR_NONE;
-
-    //  PREVIOUS CODE
-    /*
-    int* active_socket = (int*) arg;
-    const char* testOk = "test: ok";
-    char* endPtr = NULL;
-    int hasSeenTestOk = 0;
-
-    char* buffer = calloc(1, MAX_HEADER_SIZE + 1);
-    if (buffer == NULL) {
-        return &our_ERR_OUT_OF_MEMORY;
-    }
-
-    while(endPtr == NULL && strlen(buffer) < MAX_HEADER_SIZE) {
-        tcp_read(*active_socket, buffer, MAX_HEADER_SIZE - strlen(buffer));
-        endPtr = strstr(buffer, HTTP_HDR_END_DELIM);
-
-        if (strstr(buffer, testOk) != NULL) {
-            hasSeenTestOk = 1;
-        }
-    }
-
-
-
-    // TODO "handle error cases" I don't know what else can happen yet
-    if (http_reply(*active_socket, hasSeenTestOk ? HTTP_OK : HTTP_BAD_REQUEST, NULL, NULL, 0)) {
-        return &our_ERR_IO;
-    }
-    
-    return &our_ERR_NONE;
-    */
 }
 
 
 /*******************************************************************
  * Init connection
+ * Initializes the HTTP server and sets the callback function.
  */
-int http_init(uint16_t port, EventCallback callback)
-{
+int http_init(uint16_t port, EventCallback callback) {
     passive_socket = tcp_server_init(port);
     cb = callback;
     return passive_socket;
@@ -153,9 +130,9 @@ int http_init(uint16_t port, EventCallback callback)
 
 /*******************************************************************
  * Close connection
+ * Closes the passive socket.
  */
-void http_close(void)
-{
+void http_close(void) {
     if (passive_socket > 0) {
         if (close(passive_socket) == -1)
             perror("close() in http_close()");
@@ -166,14 +143,16 @@ void http_close(void)
 
 /*******************************************************************
  * Receive content
+ * Accepts a new connection and starts a new thread to handle it.
  */
-int http_receive(void)
-{
-    int* active_socket = malloc(sizeof(int));
+int http_receive(void) {
+    // Allocate memory for the active socket
+    int *active_socket = malloc(sizeof(int));
     if (active_socket == NULL) {
         return ERR_OUT_OF_MEMORY;
     }
 
+    // Accept a new connection
     *active_socket = tcp_accept(passive_socket);
     if (*active_socket < 0) {
         free(active_socket);
@@ -182,14 +161,17 @@ int http_receive(void)
 
     pthread_attr_t attr;
 
-    if (pthread_attr_init(&attr) || pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
+    // Initialize thread attributes and set detach state
+    if (pthread_attr_init(&attr) ||
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
         free(active_socket);
         return ERR_IO;
     }
-    
-    pthread_t thread;
-    pthread_create(&thread, &attr, handle_connection, active_socket);
 
+    pthread_t thread;
+
+    // Create a new thread to handle the connection
+    pthread_create(&thread, &attr, handle_connection, active_socket);
     pthread_attr_destroy(&attr);
 
     return ERR_NONE;
@@ -197,13 +179,13 @@ int http_receive(void)
 
 /*******************************************************************
  * Serve a file content over HTTP
+ * Serves the content of a file over an HTTP connection.
  */
-int http_serve_file(int connection, const char* filename)
-{
+int http_serve_file(int connection, const char *filename) {
     M_REQUIRE_NON_NULL(filename);
 
     // open file
-    FILE* file = fopen(filename, "r");
+    FILE *file = fopen(filename, "r");
     if (file == NULL) {
         fprintf(stderr, "http_serve_file(): Failed to open file \"%s\"\n", filename);
         return http_reply(connection, "404 Not Found", "", "", 0);
@@ -213,18 +195,22 @@ int http_serve_file(int connection, const char* filename)
     fseek(file, 0, SEEK_END);
     const long pos = ftell(file);
     if (pos < 0) {
-        fprintf(stderr, "http_serve_file(): Failed to tell file size of \"%s\"\n",
+        fprintf(stderr,
+                "http_serve_file(): Failed to tell file size of \"%s\"\n",
                 filename);
+
         fclose(file);
         return ERR_IO;
     }
+
     rewind(file);
     const size_t file_size = (size_t) pos;
 
     // read file content
-    char* const buffer = calloc(file_size + 1, 1);
+    char *const buffer = calloc(file_size + 1, 1);
     if (buffer == NULL) {
-        fprintf(stderr, "http_serve_file(): Failed to allocate memory to serve \"%s\"\n", filename);
+        fprintf(stderr, "http_serve_file(): Failed to allocate memory to serve \"%s\"\n",
+                filename);
         fclose(file);
         return ERR_IO;
     }
@@ -236,12 +222,12 @@ int http_serve_file(int connection, const char* filename)
         return ERR_IO;
     }
 
-    // send the file
-    const int  ret = http_reply(connection, HTTP_OK,
-                                "Content-Type: text/html; charset=utf-8" HTTP_LINE_DELIM,
-                                buffer, file_size);
+    // Send the file content over HTTP
+    const int ret = http_reply(connection, HTTP_OK,
+                               "Content-Type: text/html; charset=utf-8" HTTP_LINE_DELIM,
+                               buffer, file_size);
 
-    // garbage collecting
+    // Clean up resources
     fclose(file);
     free(buffer);
     return ret;
@@ -249,17 +235,19 @@ int http_serve_file(int connection, const char* filename)
 
 /*******************************************************************
  * Create and send HTTP reply
+ * Creates and sends an HTTP reply to the client.
  */
-int http_reply(int connection, const char* status, const char* headers, const char *body, size_t body_len)
-{
+int http_reply(int connection, const char *status, const char *headers, const char *body,
+               size_t body_len) {
     if (body_len > 0 && body == NULL) {
         return ERR_INVALID_ARGUMENT;
     }
 
     const char contentLengthStr[] = "Content-Length: ";
-    char body_lenStr[10] = {0}; 
+    char body_lenStr[10] = {0};
     sprintf(body_lenStr, "%zu", body_len);
-    const char* headerElements[] = {HTTP_PROTOCOL_ID, status, HTTP_LINE_DELIM, headers, contentLengthStr, body_lenStr, HTTP_HDR_END_DELIM};
+    const char *headerElements[] = {HTTP_PROTOCOL_ID, status, HTTP_LINE_DELIM, headers,
+                                    contentLengthStr, body_lenStr, HTTP_HDR_END_DELIM};
 
     size_t header_len = 0;
     for (int i = 0; i < 7; ++i) {
@@ -268,8 +256,8 @@ int http_reply(int connection, const char* status, const char* headers, const ch
         }
     }
 
-    size_t len = header_len +1 + body_len +1;
-    char* resp = calloc(1, len);
+    size_t len = header_len + 1 + body_len + 1;
+    char *resp = calloc(1, len);
     if (resp == NULL) {
         return ERR_OUT_OF_MEMORY;
     }
@@ -283,7 +271,8 @@ int http_reply(int connection, const char* status, const char* headers, const ch
     if (body != NULL) {
         memcpy(&resp[header_len], body, body_len);
     }
-    
+
+    // Send the response over the connection
     tcp_send(connection, resp, len);
     free(resp);
 

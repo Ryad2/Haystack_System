@@ -11,13 +11,14 @@ const char *const smallFileAck = "small";
 const char *const bigFileAck = "big";
 const char *const ack = "ACK";
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
     if (argc != 3) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
     } else {
-        argc--; argv++; // skips ./
-        FILE* file = fopen(argv[1], "rb");
+        argc--;
+        argv++; // skips ./
+        FILE *file = fopen(argv[1], "rb");
         if (file == NULL) {
             return ERR_IO;
         }
@@ -58,14 +59,14 @@ int main(int argc, char* argv[]) {
         // file ACK
         const char fileAckMess[MAX_ANSWER_LENGTH + 1] = {0};
         tcp_read(socketID, fileAckMess, MAX_ANSWER_LENGTH);
-        
+
         // TOO BIG
         if (!strncmp(fileAckMess, bigFileAck, 3)) {
-                return 0;
+            return 0;
         }
-        
+
         // SMALL ENOUGH
-        if (!strncmp(fileAckMess, smallFileAck, 3)) {   
+        if (!strncmp(fileAckMess, smallFileAck, 3)) {
             // send file
             fseek(file, 0, SEEK_SET);
             const char fileMess[MAX_ANSWER_LENGTH + 1] = {0};

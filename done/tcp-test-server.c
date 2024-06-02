@@ -10,18 +10,19 @@ const char *const smallFileAck = "small";
 const char *const bigFileAck = "big";
 const char *const ack = "ACK";
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
     if (argc != 2) {
         return ERR_NOT_ENOUGH_ARGUMENTS;
     } else {
-        argc--; argv++; // skips ./
+        argc--;
+        argv++; // skips ./
 
         // init
         int passive_socket = tcp_server_init(atouint16(argv[0]));
         printf("socket : %d\n", passive_socket);
 
-        while(1) {
+        while (1) {
             listen(passive_socket, 1);
             int socket = tcp_accept(passive_socket);
 
@@ -46,7 +47,7 @@ int main(int argc, char* argv[]) {
                 tcp_read(socket, fileMess, MAX_ANSWER_LENGTH);
                 printf("received \"%s\"\n", fileMess);
                 fflush(stdout);
-                
+
                 // end ACK
                 const char lastMess[MAX_ANSWER_LENGTH + 1] = {0};
                 strcat(lastMess, ack);

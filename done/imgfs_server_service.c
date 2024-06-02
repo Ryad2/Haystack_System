@@ -18,7 +18,7 @@
 #include "imgfs_server_service.h"
 #include <vips/vips.h>
 
-
+// Function declaration
 int handle_http_message(struct http_message* msg, int connection);
 // Main in-memory structure for imgFS
 static struct imgfs_file fs_file;
@@ -33,21 +33,23 @@ pthread_mutex_t mutex;
  ********************************************************************** */
 int server_startup (int argc, char **argv)
 {
-    if (argc < 2) return ERR_NOT_ENOUGH_ARGUMENTS;
+    if (argc < 2) return ERR_NOT_ENOUGH_ARGUMENTS;  // Check if enough arguments are provided
     int errcode = ERR_NONE;
-    if ((errcode = do_open(argv[1], "rb+", &fs_file))) {
+    if ((errcode = do_open(argv[1], "rb+", &fs_file))) {// Open the imgFS file
         return errcode;
     }
 
-    if (pthread_mutex_init(&mutex, NULL)) {
+    if (pthread_mutex_init(&mutex, NULL)) { // Initialize the mutex
         return ERR_IO;
     }
-    print_header(&fs_file.header);
+    print_header(&fs_file.header);  // Print the header information of the imgFS file
 
+    // Set the server port, use default if not provided
     server_port = argc > 2 ? atouint16(argv[2]) : DEFAULT_LISTENING_PORT;
+    // Initialize the HTTP server
     uint16_t listening_port = (uint16_t) http_init(server_port, handle_http_message);
 
-    if (VIPS_INIT(argv[0])) {
+    if (VIPS_INIT(argv[0])) { // Initialize the VIPS library
         return ERR_IMGLIB;
     }
 
@@ -63,10 +65,10 @@ int server_startup (int argc, char **argv)
 void server_shutdown (void)
 {
     fprintf(stderr, "Shutting down...\n");
-    http_close();
-    pthread_mutex_destroy(&mutex);
-    do_close(&fs_file);
-    vips_shutdown();
+    http_close();   // Close the HTTP server
+    pthread_mutex_destroy(&mutex);  // Destroy the mutex
+    do_close(&fs_file); // Close the imgFS file
+    vips_shutdown();    // Shutdown the VIPS library
 }
 
 /**********************************************************************
@@ -75,7 +77,7 @@ void server_shutdown (void)
 static int reply_error_msg(int connection, int error)
 {
 #define ERR_MSG_SIZE 256
-    char err_msg[ERR_MSG_SIZE]; // enough for any reasonable err_msg
+    char err_msg[ERR_MSG_SIZE]; // Buffer for error message
     if (snprintf(err_msg, ERR_MSG_SIZE, "Error: %s\n", ERR_MSG(error)) < 0) {
         fprintf(stderr, "reply_error_msg(): sprintf() failed...\n");
         return ERR_RUNTIME;
@@ -90,8 +92,10 @@ static int reply_error_msg(int connection, int error)
 static int reply_302_msg(int connection)
 {
     char location[ERR_MSG_SIZE];
-    if (snprintf(location, ERR_MSG_SIZE, "Location: http://localhost:%d/" BASE_FILE HTTP_LINE_DELIM,
+    if (snprintf(location, ERR_MSG_SIZE,
+                 "Location: http://localhost:%d/" BASE_FILE HTTP_LINE_DELIM,
                  server_port) < 0) {
+
         fprintf(stderr, "reply_302_msg(): sprintf() failed...\n");
         return ERR_RUNTIME;
     }
@@ -105,25 +109,28 @@ int handle_list_call(int connection) {
     char* output = NULL;
     int errcode = 0;
     pthread_mutex_lock(&mutex);
-    if ((errcode = do_list(&fs_file, JSON, &output))) {
+    if ((errcode = do_list(&fs_file, JSON, &output))) { // List the contents of imgFS
         pthread_mutex_unlock(&mutex);
         return reply_error_msg(connection, errcode);
     }
 
     pthread_mutex_unlock(&mutex);
-    errcode = http_reply(connection, HTTP_OK, "Content-Type: application/json" HTTP_LINE_DELIM, output, strlen(output));
+    errcode = http_reply(connection, HTTP_OK,
+                 "Content-Type: application/json" HTTP_LINE_DELIM,
+                 output, strlen(output));
+
     free(output);
     return errcode;
 }
 
 int handle_read_call(struct http_message* msg, int connection) {
     char res[6] = {0};
-    if (!http_get_var(&msg->uri, "res", res, 6)) {
+    if (!http_get_var(&msg->uri, "res", res, 6)) {// Get the resolution parameter
         return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
 
     char img_id[MAX_IMG_ID +1] = {0};
-    if (!http_get_var(&msg->uri, "img_id", img_id, MAX_IMG_ID)) {
+    if (!http_get_var(&msg->uri, "img_id", img_id, MAX_IMG_ID)) { // Get the image ID parameter
         return reply_error_msg(connection, ERR_INVALID_ARGUMENT);
     }
 
@@ -131,7 +138,12 @@ int handle_read_call(struct http_message* msg, int connection) {
     char* buffer = NULL;
     uint32_t size = 0;
     pthread_mutex_lock(&mutex);
-    if ((errcode = do_read(img_id, resolution_atoi(res), &buffer, &size, &fs_file))) {
+
+    if ((errcode =
+            do_read(img_id, resolution_atoi(res),
+         &buffer, &size, &fs_file)) // Read the image from imgFS
+       ) {
+
         pthread_mutex_unlock(&mutex);
         if (buffer != NULL) {
             free(buffer);
@@ -139,7 +151,9 @@ int handle_read_call(struct http_message* msg, int connection) {
         return reply_error_msg(connection, errcode);
     }
     pthread_mutex_unlock(&mutex);
-    errcode = http_reply(connection, HTTP_OK, "Content-Type: image/jpeg" HTTP_LINE_DELIM, buffer, size);
+    errcode = http_reply(connection,HTTP_OK,
+                         "Content-Type: image/jpeg" HTTP_LINE_DELIM,
+                         buffer, size); // Reply with the image
     free(buffer);
     return errcode;
 }
@@ -191,7 +205,8 @@ int handle_insert_call(struct http_message* msg, int connection) {
 int handle_http_message(struct http_message* msg, int connection)
 {
     M_REQUIRE_NON_NULL(msg);
-    if (http_match_verb(&msg->uri, "/") || http_match_uri(msg, "/index.html")) {
+    if (http_match_verb(&msg->uri, "/")
+    || http_match_uri(msg, "/index.html")) {    // Serve the index file
         return http_serve_file(connection, BASE_FILE);
     }
 
@@ -199,18 +214,21 @@ int handle_http_message(struct http_message* msg, int connection)
                  connection,
                  (int) msg->uri.len, msg->uri.val);
 
-    if (http_match_uri(msg, URI_ROOT "/list")) {
+    if (http_match_uri(msg, URI_ROOT "/list")) {        // Handle list call
         return handle_list_call(connection);
     }
-    else if (http_match_uri(msg, URI_ROOT "/insert") && http_match_verb(&msg->method, "POST")) {
+
+    else if (http_match_uri(msg, URI_ROOT "/insert")
+            && http_match_verb(&msg->method, "POST")) {             // Handle insert call
         return handle_insert_call(msg, connection);
     }
-    else if (http_match_uri(msg, URI_ROOT "/read")) {
+
+    else if (http_match_uri(msg, URI_ROOT "/read")) {   // Handle read call
         return handle_read_call(msg, connection);
     }
-    else if (http_match_uri(msg, URI_ROOT "/delete")) {
+
+    else if (http_match_uri(msg, URI_ROOT "/delete")) { // Handle delete call
         return handle_delete_call(msg, connection);
     } 
-    else
-        return reply_error_msg(connection, ERR_INVALID_COMMAND);
+    else   return reply_error_msg(connection, ERR_INVALID_COMMAND);// Handle invalid command
 }
